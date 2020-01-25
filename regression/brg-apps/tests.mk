@@ -25,6 +25,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# This Makefile fragement defines the possible targets
-# (sub-directories) for regression in cosimulation and on F1.
-TARGETS = library spmd cuda python brg-apps
+# This Makefile fragment defines all of the regression tests (and the
+# source path) for this sub-directory.
+
+REGRESSION_TESTS_TYPE = brg-apps
+SRC_PATH=$(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)/
+
+TILE_GROUP_DIM_X = 2
+TILE_GROUP_DIM_Y = 2
+
+# "Unified tests" all use the generic test top-level:
+# test_unified_main.c
+UNIFIED_TESTS =
+
+# "Independent Tests" use a per-test <test_name>.c file
+INDEPENDENT_TESTS += test_vvadd
+
+# REGRESSION_TESTS is a list of all regression tests to run.
+REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
+
+DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
+
+CDEFINES   += $(DEFINES)
+CXXDEFINES += $(DEFINES)
+
+FLAGS     = -g -Wall
+CFLAGS   += -std=c99 $(FLAGS) 
+CXXFLAGS += -std=c++11 $(FLAGS)
