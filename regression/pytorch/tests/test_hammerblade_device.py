@@ -1,25 +1,10 @@
+import pytest
+
 """
 BRG tests on PyTorch => mainly used to to test HammerBlade device
 Jan 31, 2020
 Lin Cheng
 """
-
-#-----------------------------------------------------------------------
-# Util
-#-----------------------------------------------------------------------
-
-def run_test(f):
-  try:
-    f()
-  except:
-    print(f.__name__ + " ... FAILED!")
-    exit(-1)
-  else:
-    print(f.__name__ + " ... PASSED!")
-
-#-----------------------------------------------------------------------
-# Unit tests
-#-----------------------------------------------------------------------
 
 # we should be able to import torch with no error
 def test_import_torch():
@@ -92,13 +77,4 @@ def test_move_between_cpu_and_hammerblade_path2():
   assert hb_x.is_hammerblade
   assert torch.equal(hb_x.cpu(), cpu_x)
 
-# word around ... manually run the tests
-print("Running PyTorch HB port unit tests ...")
-run_test(test_import_torch)
-run_test(test_built_with_hammerblade)
-run_test(test_hammerblade_device)
-run_test(test_hammerblade_empty_path1)
-run_test(test_hammerblade_empty_path2)
-run_test(test_move_between_cpu_and_hammerblade_path1)
-run_test(test_move_between_cpu_and_hammerblade_path2)
-print("ALL Done!")
+

@@ -33,7 +33,7 @@ SRC_PATH=$(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)/
 
 # "Unified tests" all use the generic test top-level:
 # test_unified_main.c
-UNIFIED_TESTS = test_pytorch
+UNIFIED_TESTS = pytest_runner
 
 # "Independent Tests" use a per-test <test_name>.c file
 INDEPENDENT_TESTS := 
