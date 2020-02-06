@@ -25,13 +25,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# This makefile fragment defines the regression rules that are reused between ALL
+# This Makefile fragment defines the regression rules that are reused between ALL
 # regression directories (Cosimulation and F1 Execution).
+
+ORANGE=\033[0;33m
+RED=\033[0;31m
+NC=\033[0m
+
+# This file REQUIRES several variables to be set. They are typically
+# set by the Makefile that includes this fragment...
+# 
+# REGRESSION_TESTS: Names of all available regression tests.
+ifndef REGRESSION_TESTS
+$(error $(shell echo -e "$(RED)BSG MAKE ERROR: REGRESSION_TESTS is not defined$(NC)"))
+endif
+
+# EXEC_PATH: The path to the directory where tests will be executed
+ifndef EXEC_PATH
+$(error $(shell echo -e "$(RED)BSG MAKE ERROR: EXEC_PATH is not defined$(NC)"))
+endif
 
 # We build a list of LOG_RULES for the regression rule (below)
 LOG_RULES = $(addsuffix .log,$(REGRESSION_TESTS))
 LOG_TARGETS =$(addprefix $(EXEC_PATH)/,$(LOG_RULES))
 $(LOG_RULES): %: $(EXEC_PATH)/%
+
+# To include a test in regression, the user defines a list of tests in
+# REGRESSION_TESTS. Each test can also define a custom rule, <test_name>.rule
+# that is run during compilation. These custom rules are useful for building
+# spmd or cuda binaries, for example.
+USER_RULES:=$(addsuffix .rule,$(REGRESSION_TESTS))
+$(USER_RULES):
+USER_CLEAN_RULES=$(addsuffix .clean,$(REGRESSION_TESTS))
+$(USER_CLEAN_RULES):
 
 # The regression target runs all of the tests in the REGRESSION_TESTS variable
 # for a directory.
