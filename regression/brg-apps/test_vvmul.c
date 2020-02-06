@@ -53,7 +53,7 @@ int kernel_vvmul (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the BRG CUDALite Vector Addition Kernel on one 2x2 tile groups.\n\n");
+        bsg_pr_test_info("Running the BRG CUDALite Vector Multiplication Kernel on one 2x2 tile groups.\n\n");
 
         srand(time); 
 

@@ -42,6 +42,7 @@ UNIFIED_TESTS =
 INDEPENDENT_TESTS += test_vvadd
 INDEPENDENT_TESTS += test_vvmul
 INDEPENDENT_TESTS += test_vinc
+INDEPENDENT_TESTS += test_vdoub
 
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)

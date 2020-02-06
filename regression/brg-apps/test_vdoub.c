@@ -25,26 +25,26 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "test_vinc.h"
+#include "test_vdoub.h"
 
 #define ALLOC_NAME "default_allocator"
 
 /*!
  * Runs the vector addition a one 2x2 tile groups. A[N] + B[N] --> C[N]
  * Grid dimensions are prefixed at 1x1. --> block_size_x is set to N.
- * This tests uses the software/brg-apps/vinc/ Manycore binary in the BSG Manycore bitbucket repository.  
+ * This tests uses the software/brg-apps/vdoub/ Manycore binary in the BSG Manycore bitbucket repository.  
 */
 
 
-void host_vinc (int *A, int *C, int N) { 
+void host_vdoub (int *A, int *C, int N) { 
         for (int i = 0; i < N; i ++) { 
-                C[i] = A[i] + 1;
+                C[i] = A[i] * 2;
         }
         return;
 }
 
 
-int kernel_vinc (int argc, char **argv) {
+int kernel_vdoub (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -53,7 +53,7 @@ int kernel_vinc (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the BRG CUDALite Vector Increment Kernel on one 2x2 tile groups.\n\n");
+        bsg_pr_test_info("Running the BRG CUDALite Vector Double Kernel on one 2x2 tile groups.\n\n");
 
         srand(time); 
 
@@ -136,7 +136,7 @@ int kernel_vinc (int argc, char **argv) {
         /*****************************************************************************************************************
         * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
         ******************************************************************************************************************/
-        rc = hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_vinc", 4, cuda_argv);
+        rc = hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_vdoub", 4, cuda_argv);
         if (rc != HB_MC_SUCCESS) { 
                 bsg_pr_err("failed to initialize grid.\n");
                 return rc;
@@ -181,13 +181,13 @@ int kernel_vinc (int argc, char **argv) {
         * Calculate the expected result using host code and compare the results. 
         ******************************************************************************************************************/
         uint32_t C_expected[N]; 
-        host_vinc (A_host, C_expected, N); 
+        host_vdoub (A_host, C_expected, N); 
 
 
         int mismatch = 0; 
         for (int i = 0; i < N; i++) {
-                if (A_host[i] + 1 != C_host[i]) {
-                        bsg_pr_err(BSG_RED("Mismatch: ") "C[%d]:  0x%08" PRIx32 " + 0x%08" PRIx32 " = 0x%08" PRIx32 "\t Expected: 0x%08" PRIx32 "\n", i , A_host[i], 1, C_host[i], C_expected[i]);
+                if (A_host[i] * 2 != C_host[i]) {
+                        bsg_pr_err(BSG_RED("Mismatch: ") "C[%d]:  0x%08" PRIx32 " * 0x%08" PRIx32 " = 0x%08" PRIx32 "\t Expected: 0x%08" PRIx32 "\n", i , A_host[i], 2, C_host[i], C_expected[i]);
                         mismatch = 1;
                 }
         } 
@@ -213,16 +213,16 @@ void cosim_main(uint32_t *exit_code, char * args) {
         scope = svGetScopeFromName("tb");
         svSetScope(scope);
 #endif
-        bsg_pr_test_info("vinc Regression Test (COSIMULATION)\n");
-        int rc = kernel_vinc(argc, argv);
+        bsg_pr_test_info("vdoub Regression Test (COSIMULATION)\n");
+        int rc = kernel_vdoub(argc, argv);
         *exit_code = rc;
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
         return;
 }
 #else
 int main(int argc, char ** argv) {
-        bsg_pr_test_info("test_vinc Regression Test (F1)\n");
-        int rc = kernel_vinc(argc, argv);
+        bsg_pr_test_info("test_vdoub Regression Test (F1)\n");
+        int rc = kernel_vdoub(argc, argv);
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
         return rc;
 }
