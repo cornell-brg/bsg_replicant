@@ -224,6 +224,7 @@ module cl_manycore
         .s_axi_araddr  (sh_ocl_araddr),
         .s_axi_arvalid (sh_ocl_arvalid),
         .s_axi_arready (ocl_sh_arready),
+        .s_axi_arprot  ('0),
         .s_axi_rdata   (ocl_sh_rdata),
         .s_axi_rresp   (ocl_sh_rresp),
         .s_axi_rvalid  (ocl_sh_rvalid),
@@ -240,6 +241,7 @@ module cl_manycore
         .m_axi_bvalid  (m_axil_ocl_bvalid),
         .m_axi_bready  (m_axil_ocl_bready),
         .m_axi_araddr  (m_axil_ocl_araddr),
+        .m_axi_arprot  (),
         .m_axi_arvalid (m_axil_ocl_arvalid),
         .m_axi_arready (m_axil_ocl_arready),
         .m_axi_rdata   (m_axil_ocl_rdata),
@@ -304,7 +306,7 @@ module cl_manycore
 `endif
 
 
-   `declare_bsg_manycore_link_sif_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p, load_id_width_p);
+   `declare_bsg_manycore_link_sif_s(addr_width_p, data_width_p, x_cord_width_p, y_cord_width_p);
 
    bsg_manycore_link_sif_s [num_cache_p-1:0] cache_link_sif_li;
    bsg_manycore_link_sif_s [num_cache_p-1:0] cache_link_sif_lo;
@@ -327,7 +329,6 @@ module cl_manycore
        ,.icache_tag_width_p(icache_tag_width_p)
        ,.epa_byte_addr_width_p(epa_byte_addr_width_p)
        ,.dram_ch_addr_width_p(dram_ch_addr_width_p)
-       ,.load_id_width_p(load_id_width_p)
        ,.num_cache_p(num_cache_p)
        ,.vcache_size_p(vcache_size_p)
        ,.vcache_block_size_in_words_p(block_size_in_words_p)
@@ -362,7 +363,6 @@ module cl_manycore
     ,.addr_width_p(addr_width_p)
     ,.x_cord_width_p(x_cord_width_p)
     ,.y_cord_width_p(y_cord_width_p)
-    ,.load_id_width_p(load_id_width_p)
   ) print_stat_snoop0 (
     .loader_link_sif_in_i(loader_link_sif_lo)
     ,.loader_link_sif_out_i(loader_link_sif_li)
@@ -374,27 +374,28 @@ module cl_manycore
    bsg_manycore_link_sif_s async_link_sif_li;
    bsg_manycore_link_sif_s async_link_sif_lo;
 
-   bsg_manycore_link_sif_async_buffer #(
-                                        .addr_width_p(addr_width_p)
-                                        ,.data_width_p(data_width_p)
-                                        ,.x_cord_width_p(x_cord_width_p)
-                                        ,.y_cord_width_p(y_cord_width_p)
-                                        ,.load_id_width_p(load_id_width_p)
-                                        ,.fifo_els_p(16)
-                                        ) async_buf (
+   bsg_manycore_link_sif_async_buffer
+     #(
+       .addr_width_p(addr_width_p)
+       ,.data_width_p(data_width_p)
+       ,.x_cord_width_p(x_cord_width_p)
+       ,.y_cord_width_p(y_cord_width_p)
+       ,.fifo_els_p(16)
+       )
+  async_buf
+    (
+     // core side
+     .L_clk_i(core_clk)
+     ,.L_reset_i(core_reset)
+     ,.L_link_sif_i(loader_link_sif_lo)
+     ,.L_link_sif_o(loader_link_sif_li)
 
-                                                     // core side
-                                                     .L_clk_i(core_clk)
-                                                     ,.L_reset_i(core_reset)
-                                                     ,.L_link_sif_i(loader_link_sif_lo)
-                                                     ,.L_link_sif_o(loader_link_sif_li)
-
-                                                     // AXI-L side
-                                                     ,.R_clk_i(clk_main_a0)
-                                                     ,.R_reset_i(~rst_main_n_sync)
-                                                     ,.R_link_sif_i(async_link_sif_li)
-                                                     ,.R_link_sif_o(async_link_sif_lo)
-                                                     );
+     // AXI-L side
+     ,.R_clk_i(clk_main_a0)
+     ,.R_reset_i(~rst_main_n_sync)
+     ,.R_link_sif_i(async_link_sif_li)
+     ,.R_link_sif_o(async_link_sif_lo)
+     );
 
 `endif
 
@@ -405,17 +406,29 @@ module cl_manycore
   localparam cache_addr_width_lp=(addr_width_p-1+byte_offset_width_lp);
 
   // hbm ramulator
+`ifdef USING_DRAMSIM3
+
+  localparam hbm_channel_addr_width_p
+    = `DRAMSIM3_MEM_PKG::channel_addr_width_p;
+  localparam hbm_data_width_p
+    = `DRAMSIM3_MEM_PKG::data_width_p;
+  localparam hbm_num_channels_p
+    = `DRAMSIM3_MEM_PKG::num_channels_p;
+
+`else
   localparam hbm_channel_addr_width_p = 29;
   localparam hbm_data_width_p = 512;
   localparam hbm_num_channels_p = 8;
-  //localparam hbm_cache_bank_addr_width_p = hbm_channel_addr_width_p - x_cord_width_p + byte_offset_width_lp;
+`endif
 
   if (mem_cfg_p == e_vcache_blocking_axi4_f1_dram
     || mem_cfg_p ==e_vcache_blocking_axi4_f1_model
     || mem_cfg_p == e_vcache_blocking_ramulator_hbm
     || mem_cfg_p == e_vcache_non_blocking_axi4_f1_dram
     || mem_cfg_p ==  e_vcache_non_blocking_axi4_f1_model
-    || mem_cfg_p == e_vcache_non_blocking_ramulator_hbm) begin: lv1_dma
+    || mem_cfg_p == e_vcache_non_blocking_ramulator_hbm
+    || mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128
+    || mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_dma
 
     // for now blocking and non-blocking shares the same wire, since interface is
     // the same. But it might change in the future.
@@ -448,7 +461,6 @@ module cl_manycore
         ,.addr_width_p(addr_width_p)
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
-        ,.load_id_width_p(load_id_width_p)
       ) mem_infty (
         .clk_i(core_clk)
         ,.reset_i(core_reset)
@@ -475,7 +487,8 @@ module cl_manycore
   end
   else if (mem_cfg_p == e_vcache_blocking_axi4_f1_dram ||
            mem_cfg_p == e_vcache_blocking_axi4_f1_model ||
-           mem_cfg_p == e_vcache_blocking_ramulator_hbm) begin: lv1_vcache
+           mem_cfg_p == e_vcache_blocking_ramulator_hbm ||
+           mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_vcache
 
 
     for (genvar i = 0; i < num_tiles_x_p; i++) begin: vcache
@@ -489,16 +502,12 @@ module cl_manycore
 
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
-        ,.load_id_width_p(load_id_width_p)
       ) vcache (
         .clk_i(core_clk)
         ,.reset_i(core_reset)
         // memory systems link from bsg_manycore_wrapper
         ,.link_sif_i(cache_link_sif_lo[i])
         ,.link_sif_o(cache_link_sif_li[i])
-        // coordinates for memory system are determined by bsg_manycore_wrapper
-        ,.my_x_i(cache_x_lo[i])
-        ,.my_y_i(cache_y_lo[i])
 
         ,.dma_pkt_o(lv1_dma.dma_pkt[i])
         ,.dma_pkt_v_o(lv1_dma.dma_pkt_v_lo[i])
@@ -531,7 +540,8 @@ module cl_manycore
   end // block: lv1_vcache
   else if (mem_cfg_p == e_vcache_non_blocking_axi4_f1_dram ||
            mem_cfg_p == e_vcache_non_blocking_axi4_f1_model ||
-           mem_cfg_p == e_vcache_non_blocking_ramulator_hbm) begin: lv1_vcache_nb
+           mem_cfg_p == e_vcache_non_blocking_ramulator_hbm ||
+           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_vcache_nb
 
     for (genvar i = 0; i < num_tiles_x_p; i++) begin: vcache
       bsg_manycore_vcache_non_blocking #(
@@ -544,7 +554,6 @@ module cl_manycore
         ,.miss_fifo_els_p(miss_fifo_els_p)
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
-        ,.load_id_width_p(load_id_width_p)
       ) vcache_nb (
         .clk_i(core_clk)
         ,.reset_i(core_reset)
@@ -723,7 +732,9 @@ module cl_manycore
 
   end // block: lv2_axi4
   else if (mem_cfg_p == e_vcache_non_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_blocking_ramulator_hbm) begin: lv2_ramulator_hbm
+           mem_cfg_p == e_vcache_blocking_ramulator_hbm ||
+           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128 ||
+           mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv2_ramulator_hbm
 
     // checks that this configuration is supported
     // we do not support having fewer caches than channels
@@ -749,7 +760,11 @@ module cl_manycore
 
     //500MHz
     bsg_nonsynth_clock_gen
+`ifdef USING_DRAMSIM3
+      #(.cycle_time_p(`DRAMSIM3_MEM_PKG::tck_ps))
+`else
       #(.cycle_time_p(2000))
+`endif
     clk_gen
       (.o(hbm_clk));
 
@@ -901,7 +916,36 @@ module cl_manycore
        );
 
   end // block: lv3_ramulator_hbm
+  else if (mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128 ||
+           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128) begin: lv3_dramsim3
+`ifdef USING_DRAMSIM3
+    bsg_nonsynth_dramsim3
+      #(.channel_addr_width_p(`DRAMSIM3_MEM_PKG::channel_addr_width_p)
+        ,.data_width_p(`DRAMSIM3_MEM_PKG::data_width_p)
+        ,.num_channels_p(`DRAMSIM3_MEM_PKG::num_channels_p)
+        ,.num_columns_p(`DRAMSIM3_MEM_PKG::num_columns_p)
+        ,.address_mapping_p(`DRAMSIM3_MEM_PKG::address_mapping_p)
+        ,.size_in_bits_p(`DRAMSIM3_MEM_PKG::size_in_bits_p)
+        ,.config_p(`DRAMSIM3_MEM_PKG::config_p)
+        //,.debug_p(1)
+        ,.init_mem_p(1))
+    dram
+      (.clk_i(lv2_ramulator_hbm.hbm_clk)
+       ,.reset_i(lv2_ramulator_hbm.hbm_reset)
 
+       ,.v_i(lv2_ramulator_hbm.hbm_req_v_lo)
+       ,.write_not_read_i(lv2_ramulator_hbm.hbm_write_not_read_lo)
+       ,.ch_addr_i(lv2_ramulator_hbm.hbm_ch_addr_lo)
+       ,.yumi_o(lv2_ramulator_hbm.hbm_req_yumi_li)
+
+       ,.data_v_i(lv2_ramulator_hbm.hbm_data_v_lo)
+       ,.data_i(lv2_ramulator_hbm.hbm_data_lo)
+       ,.data_yumi_o(lv2_ramulator_hbm.hbm_data_yumi_li)
+
+       ,.data_o(lv2_ramulator_hbm.hbm_data_li)
+       ,.data_v_o(lv2_ramulator_hbm.hbm_data_v_li));
+`endif
+  end
 
 
 `ifdef COSIM
@@ -942,7 +986,7 @@ module cl_manycore
       .s_axi_awready(m_axi4_manycore_awready),
 
       // Slave Interface Write Data Ports
-      .s_axi_wid(m_axi4_manycore_wid),
+      .s_axi_wid('0),
       .s_axi_wdata(m_axi4_manycore_wdata),
       .s_axi_wstrb(m_axi4_manycore_wstrb),
       .s_axi_wlast(m_axi4_manycore_wlast),
@@ -1098,7 +1142,6 @@ module cl_manycore
        ,.data_width_p     (data_width_p     )
        ,.x_cord_width_p   (x_cord_width_p   )
        ,.y_cord_width_p   (y_cord_width_p   )
-       ,.load_id_width_p  (load_id_width_p  )
        ,.max_out_credits_p(max_out_credits_p)
        ) 
    axil_to_mcl_inst 

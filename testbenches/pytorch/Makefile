@@ -50,7 +50,7 @@ include $(CL_DIR)/hdk.mk
 
 # tests.mk defines all of the regression tests (and the source path)
 # for this sub-directory.
-include $(REGRESSION_PATH)/library/tests.mk
+include $(REGRESSION_PATH)/pytorch/tests.mk
 
 # The HDK Makefile must come before compilation.mk to override AWS'
 # (broken) clean HDK_COMMON_DIR is set by running `source
@@ -72,14 +72,11 @@ include $(TESTBENCH_PATH)/cosimulation.mk
 # not overwritten.
 include $(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)/rules.mk
 
-
-# The rule below defines how to run all Library tests. The output .vpd
-# file will be named <test_name>.vpd. To generate a trace file, run
-# `make <test_name>.vanilla.log`
-INDEPENDENT_LOGS=$(foreach tgt, $(INDEPENDENT_TESTS), $(EXEC_PATH)/$(tgt).log)
-$(INDEPENDENT_LOGS): $(EXEC_PATH)/%.log: $(EXEC_PATH)/% %.rule
-	$< 2>&1 +ntb_random_seed_automatic +vpdfile+$(@:.log=.vpd) $(SIM_ARGS) \
-		+c_args="" | tee $@
-
-# dve.mk defines the dve targets
-include $(TESTBENCH_PATH)/dve.mk
+# The rule below defines how to run test_loader for PyTorch tests. The loader
+# requires two arguments: The PyTorch Test Directoty (PYTORCH_TEST_PATH) and the
+# test name (TEST_NAME)
+PYTORCH_TEST_PATH = $(BSG_F1_DIR)/regression/pytorch/
+$(EXEC_PATH)/%.log: TEST_NAME=$(subst .log,,$(notdir $@))
+$(EXEC_PATH)/%.log: $(EXEC_PATH)/test_loader %.rule
+	$< 2>&1 +ntb_random_seed_automatic +vpdfile+$<.vpd $(SIM_ARGS) \
+		+c_args="$(PYTORCH_TEST_PATH) $(TEST_NAME)" | tee $@

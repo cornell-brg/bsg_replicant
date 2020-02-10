@@ -57,10 +57,12 @@ $(error $(shell echo -e "$(RED)BSG MAKE ERROR: PROJECT is not defined$(NC)"))
 endif
 
 # Don't include more than once
-ifndef (_BSG_F1_TESTBENCHES_RAMULATOR_MK)
-_BSG_F1_TESTBENCHES_RAMULATOR_MK := 1
+ifndef (_BSG_F1_TESTBENCHES_DRAMSIM3_MK)
+_BSG_F1_TESTBENCHES_DRAMSIM3_MK := 1
+_DRAMSIM3_MEM_CFGS := e_vcache_non_blocking_dramsim3_hbm2_4gb_x128
+_DRAMSIM3_MEM_CFGS += e_vcache_blocking_dramsim3_hbm2_4gb_x128
 # Check if ramulator is the memory model for this design
-ifneq ($(filter e_%_ramulator_hbm, $(CL_MANYCORE_MEM_CFG)),)
+ifneq ($(filter $(_DRAMSIM3_MEM_CFGS), $(CL_MANYCORE_MEM_CFG)),)
 
 # Disable the micron memory model (it's unused and slows simulation WAY down)
 VDEFINES   += AXI_MEMORY_MODEL=1
@@ -70,33 +72,57 @@ VDEFINES   += ECC_ADDR_LO=0
 VDEFINES   += ECC_ADDR_HI=0
 VDEFINES   += RND_ECC_WEIGHT=0
 
-# Add ramulator to the simlibs
-SIMLIBS += $(TESTBENCH_PATH)/libramulator.so
-LDFLAGS += -L$(TESTBENCH_PATH) -Wl,-rpath=$(TESTBENCH_PATH) -lramulator
+# Flag that DRAMSim3 is being used
+VDEFINES   += USING_DRAMSIM3=1
+
+# Define the name and package of the memory technology
+DRAMSIM3_MEMORY:=$(patsubst e_vcache_blocking_dramsim3_%, %, \
+	$(filter e_vcache_blocking_%, $(CL_MANYCORE_MEM_CFG)))
+
+DRAMSIM3_MEMORY+=$(patsubst e_vcache_non_blocking_dramsim3_%, %, \
+	$(filter e_vcache_non_blocking_%, $(CL_MANYCORE_MEM_CFG)))
+
+DRAMSIM3_MEMORY:=$(strip $(DRAMSIM3_MEMORY))
+DRAMSIM3_MEM_PKG:=bsg_dramsim3_$(DRAMSIM3_MEMORY)_pkg
+
+VDEFINES   += DRAMSIM3_MEMORY=$(DRAMSIM3_MEMORY)
+VDEFINES   += DRAMSIM3_MEM_PKG=$(DRAMSIM3_MEM_PKG)
+
+# Add DRAMSim3 to the simlibs
+SIMLIBS += $(TESTBENCH_PATH)/libdramsim3.so
+LDFLAGS += -L$(TESTBENCH_PATH) -Wl,-rpath=$(TESTBENCH_PATH) -ldramsim3
 
 # Add a clean rule
-.PHONY: ramulator.clean
-ramulator.clean:
-	rm -f $(TESTBENCH_PATH)/libramulator.so
+.PHONY: dramsim3.clean
+dramsim3.clean:
+	rm -f $(TESTBENCH_PATH)/libdramsim3.so
 
 # Add as a subrule to simlibs.clean
-simlibs.clean: ramulator.clean
+simlibs.clean: dramsim3.clean
 
 # Rules for building ramulator library
-$(TESTBENCH_PATH)/libramulator.so: INCLUDES += -I$(BASEJUMP_STL_DIR)/imports/ramulator/src
-$(TESTBENCH_PATH)/libramulator.so: CXXFLAGS += -std=c++11 -D_GNU_SOURCE -Wall -fPIC -shared
-$(TESTBENCH_PATH)/libramulator.so: CXXFLAGS += -DRAMULATOR
-$(TESTBENCH_PATH)/libramulator.so: CXXFLAGS += -DHBM_CONFIG_PATH=$(BASEJUMP_STL_DIR)/imports/ramulator/configs/HBM-config.cfg
-$(TESTBENCH_PATH)/libramulator.so: CXX=clang++
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/bsg_test/bsg_ramulator_hbm.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/HBM.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/HBM.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/Config.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/StatType.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/Controller.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/ALDRAM.cpp
-$(TESTBENCH_PATH)/libramulator.so: $(BASEJUMP_STL_DIR)/imports/ramulator/src/TLDRAM.cpp
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -std=c++11 -D_GNU_SOURCE -Wall -fPIC -shared
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -I$(BASEJUMP_STL_DIR)/imports/DRAMSim3/src
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -I$(BASEJUMP_STL_DIR)/imports/DRAMSim3/ext/headers
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -I$(BASEJUMP_STL_DIR)/imports/DRAMSim3/ext/fmt/include
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -DFMT_HEADER_ONLY=1
+$(TESTBENCH_PATH)/libdramsim3.so: CXXFLAGS += -DBASEJUMP_STL_DIR="$(BASEJUMP_STL_DIR)"
+$(TESTBENCH_PATH)/libdramsim3.so: CXX=g++
+
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/bankstate.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/channel_state.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/command_queue.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/common.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/configuration.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/controller.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/dram_system.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/hmc.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/memory_system.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/refresh.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/simple_stats.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/imports/DRAMSim3/src/timing.cc
+$(TESTBENCH_PATH)/libdramsim3.so: $(BASEJUMP_STL_DIR)/bsg_test/bsg_dramsim3.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) $^ -Wl,-soname,$(notdir $@) -o $@
 
-endif # ifneq($(filter e_%_ramulator_hbm, $(CL_MANYCORE_MEM_CFG)),)
-endif # ifndef(_BSG_F1_TESTBENCHES_RAMULATOR_MK)
+endif # ifneq ($(filter $(_DRAMSIM3_MEM_CFGS), $(CL_MANYCORE_MEM_CFG)),)
+endif # ifndef(_BSG_F1_TESTBENCHES_DRAMSIM3_MK)

@@ -26,8 +26,8 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # This (rather sparse) Makefile is responsible for building and
-# running regression tests in cosimulation.  Run `make help` to see the
-# available targets. (The target `help` is defined in compilation.mk)
+# running regression tests on F1.  Run `make help` to see the
+# available targets. (The target `help` is defined in f1.mk)
 
 # environment.mk verifies the build environment and sets the following
 # makefile variables:
@@ -40,46 +40,27 @@
 # CL_DIR: Path to the directory of this AWS F1 Project
 include ../../environment.mk
 
-# The following variables are set by $(CL_DIR)/hdk.mk
-#
-# HDK_SHELL_DESIGN_DIR: Path to the directory containing all the AWS "shell" IP
-# AWS_FPGA_REPO_DIR: Path to the clone of the aws-fpga repo
-# HDK_COMMON_DIR: Path to HDK 'common' directory w/ libraries for cosimluation.
-# SDK_DIR: Path to the SDK directory in the aws-fpga repo
-include $(CL_DIR)/hdk.mk
-
-# tests.mk defines all of the regression tests (and the source path)
-# for this sub-directory.
-include $(REGRESSION_PATH)/library/tests.mk
-
-# The HDK Makefile must come before compilation.mk to override AWS'
-# (broken) clean HDK_COMMON_DIR is set by running `source
-# hdk_setup.sh` from the aws-fpga repository
-include $(HDK_COMMON_DIR)/verif/tb/scripts/Makefile.common.inc
+# tests.mk defines all of the regression tests (and the source path) for this
+# sub-directory. It defines the variable REGRESSION_TESTS_TYPE
+include tests.mk
 
 # EXEC_PATH defines this directory, where the tests are actually
 # executed. REGRESSION_TESTS_TYPE is defined by tests.mk in each regression
-# sub-directory.
-EXEC_PATH=$(TESTBENCH_PATH)/$(REGRESSION_TESTS_TYPE)
+# sub-directory. It is used in f1.mk.
+EXEC_PATH=$(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)
 
-# cosimulation.mk defines all of the re-used rules for cosimulation. 
-# (e.g. regression, clean, help, etc)
-include $(TESTBENCH_PATH)/cosimulation.mk
+# f1.mk defines all of the re-used rules for execution on F1. (e.g. regression,
+# clean, help, etc)
+include $(REGRESSION_PATH)/f1.mk
 
-# rules.mk defines rules for building RISC-V binaries associated with
-# the tests in this sub-directory. rules.mk must come after
-# compilation.mk so that <test_name>.rule and <test_name>.clean are
-# not overwritten.
-include $(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)/rules.mk
+# rules.mk defines rules for building RISC-V binaries associated with the tests
+# in this sub-directory. rules.mk must come after f1.mk so that
+# <test_name>.rule and <test_name>.clean are not overwritten.
+include rules.mk
 
-
-# The rule below defines how to run all Library tests. The output .vpd
-# file will be named <test_name>.vpd. To generate a trace file, run
-# `make <test_name>.vanilla.log`
-INDEPENDENT_LOGS=$(foreach tgt, $(INDEPENDENT_TESTS), $(EXEC_PATH)/$(tgt).log)
-$(INDEPENDENT_LOGS): $(EXEC_PATH)/%.log: $(EXEC_PATH)/% %.rule
-	$< 2>&1 +ntb_random_seed_automatic +vpdfile+$(@:.log=.vpd) $(SIM_ARGS) \
-		+c_args="" | tee $@
-
-# dve.mk defines the dve targets
-include $(TESTBENCH_PATH)/dve.mk
+# The rule below defines how to run test_loader for PyTorch tests. The loader
+# requires one argument: The test name (TEST_NAME)
+PYTORCH_TEST_PATH = $(BSG_F1_DIR)/regression/pytorch/
+$(EXEC_PATH)/%.log: TEST_NAME=$(subst .log,,$(notdir $@))
+$(EXEC_PATH)/%.log: $(EXEC_PATH)/test_loader %.rule
+	sudo $< $(PYTORCH_TEST_PATH) $(TEST_NAME) | tee $@
