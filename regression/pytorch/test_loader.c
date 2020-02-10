@@ -35,24 +35,24 @@
 
 int test_pytorch(int argc, char **argv) {
         int len, err;
-        char *python_path;
+        char *pytorch_path;
         char *test_name;
 
         struct arguments_path args = {NULL};
 
         argp_parse (&argp_path_py, argc, argv, 0, 0, &args);
         test_name = args.name;
-        python_path = args.path;
+        pytorch_path = args.path;
         bsg_pr_test_info("%s Regression Test\n", test_name);
 
-        len = strlen(python_path) + strlen(test_name) + strlen(".py");
+        len = strlen(pytorch_path) + strlen(test_name) + strlen(".py");
 
         char program_path[len + 1], *ptr;
         program_path[len] = '\0';
         ptr = program_path;
 
-        strcpy(ptr, python_path);
-        ptr += strlen(python_path);
+        strcpy(ptr, pytorch_path);
+        ptr += strlen(pytorch_path);
 
         strcpy(ptr, test_name);
         ptr += strlen(test_name);

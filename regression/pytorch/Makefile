@@ -58,9 +58,9 @@ include $(REGRESSION_PATH)/f1.mk
 # <test_name>.rule and <test_name>.clean are not overwritten.
 include rules.mk
 
-# The rule below defines how to run test_loader for PyTorch tests. The loader
+# The rule below defines how to run test_loader for Python tests. The loader
 # requires one argument: The test name (TEST_NAME)
-PYTORCH_TEST_PATH = $(BSG_F1_DIR)/regression/pytorch/
+PYTHON_TEST_PATH = $(BSG_F1_DIR)/regression/pytorch/
 $(EXEC_PATH)/%.log: TEST_NAME=$(subst .log,,$(notdir $@))
 $(EXEC_PATH)/%.log: $(EXEC_PATH)/test_loader %.rule
-	sudo $< $(PYTORCH_TEST_PATH) $(TEST_NAME) | tee $@
+	sudo $< $(PYTHON_TEST_PATH) $(TEST_NAME) | tee $@

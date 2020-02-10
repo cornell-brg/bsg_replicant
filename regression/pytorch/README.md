@@ -1,4 +1,4 @@
-# PyTorch (PyTorch/C Library Tests)
+# Python (Python/C Library Tests)
 
 This directory runs regression tests of Manycore
 functionality on F1. Each test is a .c/.h, or a .cpp/.hpp file pair,
