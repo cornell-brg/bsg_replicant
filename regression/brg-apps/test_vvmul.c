@@ -144,7 +144,7 @@ int kernel_vvmul (int argc, char **argv) {
 
         hb_mc_dimension_t tg_dim = { .x = 2, .y = 2}; 
 
-        hb_mc_dimension_t grid_dim = { .x = 1, .y = 1}; 
+        hb_mc_dimension_t grid_dim = { .x = 2, .y = 2}; 
 
 
         /*****************************************************************************************************************
