@@ -37,6 +37,11 @@ UNIFIED_TESTS = test_fib
 UNIFIED_TESTS += test_bsg_print_stat
 UNIFIED_TESTS += test_putchar_stream
 
+# PP: add simple xcel test here
+# these unified tests will be loaded by the spmd test loader. it provides
+# a clean API to run the SPMD testcases in bsg_manycore
+UNIFIED_TESTS += test_simple_accel
+
 # "Independent Tests" use a per-test <test_name>.c file
 INDEPENDENT_TESTS := test_bsg_dram_loopback_cache
 INDEPENDENT_TESTS += test_symbol_to_eva
