@@ -170,6 +170,7 @@ $(HARDWARE_PATH)/f1_parameters.vh: $(BSG_MACHINE_PATH)/Makefile.machine.include
 	@echo "\`define CL_MANYCORE_VCACHE_MISS_FIFO_ELS $(CL_MANYCORE_VCACHE_MISS_FIFO_ELS)" >> $@
 	@echo "\`define CL_MANYCORE_MEM_CFG $(CL_MANYCORE_MEM_CFG)" >> $@
 	@echo "\`define CL_MANYCORE_BRANCH_TRACE_EN $(CL_MANYCORE_BRANCH_TRACE_EN)" >> $@
+	@echo "\`define CL_MANYCORE_HETERO_TYPE_VEC $(CL_MANYCORE_HETERO_TYPE_VEC)" >> $@
 	@echo "\`endif" >> $@
 
 # This package defines the number of lines in the ROM

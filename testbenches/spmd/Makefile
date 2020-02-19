@@ -61,6 +61,10 @@ include $(HDK_COMMON_DIR)/verif/tb/scripts/Makefile.common.inc
 # sub-directory.
 EXEC_PATH=$(TESTBENCH_PATH)/$(REGRESSION_TESTS_TYPE)
 
+# PP: to support SPMD programs using accelerators, we need to choose the
+# correct machine configuration
+$(EXEC_PATH)/%.log:
+
 # cosimulation.mk defines all of the re-used rules for cosimulation. 
 # (e.g. regression, clean, help, etc)
 include $(TESTBENCH_PATH)/cosimulation.mk

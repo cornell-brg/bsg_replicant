@@ -85,18 +85,21 @@ int test_loader(int argc, char **argv) {
                 return err;
 
         // initialize the manycore
+        printf("[SPMD_LOADER][test_loader.c] Before hb_mc_manycore_init()\n");
         err = hb_mc_manycore_init(&manycore, test_name, 0);
         if (err != HB_MC_SUCCESS) {
                 bsg_pr_err("failed to initialize manycore instance: %s\n",
                            hb_mc_strerror(err));
                 return err;
         }
+        printf("[SPMD_LOADER][test_loader.c] After hb_mc_manycore_init()\n");
 
         /* initialize the tile */
         hb_mc_coordinate_t target = hb_mc_coordinate(0,1);
         hb_mc_coordinate_t origin = hb_mc_coordinate(0,1);
 
         // freeze the tile
+        printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_freeze()\n");
         err = hb_mc_tile_freeze(mc, &target);
         if (err != HB_MC_SUCCESS) {
                 bsg_pr_err("failed to freeze tile (%" PRId32 ", %" PRId32 "): %s\n",
@@ -105,6 +108,7 @@ int test_loader(int argc, char **argv) {
                            hb_mc_strerror(err));
                 goto cleanup;
         }
+        printf("[SPMD_LOADER][test_loader.c] After hb_mc_tile_freeze()\n");
 
         // set its origin
         err = hb_mc_tile_set_origin(mc, &target, &origin);

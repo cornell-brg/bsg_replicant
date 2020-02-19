@@ -46,7 +46,9 @@ HARDWARE_PATH    := $(CL_DIR)/hardware
 REGRESSION_PATH  := $(CL_DIR)/regression
 TESTBENCH_PATH   := $(CL_DIR)/testbenches
 LIBRARIES_PATH   := $(CL_DIR)/libraries
-BSG_MACHINE_PATH := $(CL_DIR)
+# BSG_MACHINE_PATH := $(CL_DIR)
+# PP: allow customized machines through command line
+BSG_MACHINE_PATH ?= $(CL_DIR)
 
 # Check if we are running inside of the BSG Bladerunner repository by searching
 # for project.mk. If project.mk is found, then we are and we should use

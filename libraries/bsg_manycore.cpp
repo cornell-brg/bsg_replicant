@@ -536,26 +536,32 @@ int  hb_mc_manycore_init(hb_mc_manycore_t *mc, const char *name, hb_mc_manycore_
         }
 
 
+        printf("[bsg_manycore.cpp] Before hb_mc_manycore_init_private_data()\n");
         // initialize private data
         if ((err = hb_mc_manycore_init_private_data(mc)) != HB_MC_SUCCESS)
                 goto cleanup;
 
+        printf("[bsg_manycore.cpp] Before hb_mc_manycore_init_mmio()\n");
         // initialize manycore for MMIO
         if ((err = hb_mc_manycore_init_mmio(mc, id)) != HB_MC_SUCCESS)
                 goto cleanup;
 
+        printf("[bsg_manycore.cpp] Before hb_mc_manycore_init_config()\n");
         // read configuration
         if ((err = hb_mc_manycore_init_config(mc)) != HB_MC_SUCCESS)
                 goto cleanup;
 
+        printf("[bsg_manycore.cpp] Before hb_mc_manycore_init_fifos()\n");
         // initialize FIFOs
         if ((err = hb_mc_manycore_init_fifos(mc)) != HB_MC_SUCCESS)
                 goto cleanup;
 
+        printf("[bsg_manycore.cpp] Before hb_mc_responders_init()\n");
         // initialize responders
         if ((err = hb_mc_responders_init(mc)))
                 goto cleanup;
 
+        printf("[bsg_manycore.cpp] Before hb_mc_manycore_enable_dram()\n");
         // enable dram
         if ((err = hb_mc_manycore_enable_dram(mc)) != HB_MC_SUCCESS)
                 goto cleanup;
@@ -571,6 +577,7 @@ int  hb_mc_manycore_init(hb_mc_manycore_t *mc, const char *name, hb_mc_manycore_
         free((void*)mc->name);
 
  done:
+        printf("[bsg_manycore.cpp] hb_mc_manycore_init() succeeds!\n");
         return r;
 }
 

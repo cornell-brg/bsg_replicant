@@ -34,6 +34,7 @@ module cosim_wrapper();
       $value$plusargs("c_args=%s", args);
 
       $display("==================== BSG MACHINE SETTINGS: ====================");
+      $display("                     inside cosim_wrapper                      ");
       $display("[INFO][TESTBENCH] BSG_MACHINE_GLOBAL_X                 = %d", num_tiles_x_p);
       $display("[INFO][TESTBENCH] BSG_MACHINE_GLOBAL_Y                 = %d", num_tiles_y_p);
       $display("[INFO][TESTBENCH] BSG_MACHINE_VCACHE_SET               = %d", sets_p);

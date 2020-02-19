@@ -1,6 +1,6 @@
 /**
  *  bsg_manycore_wrapper.v
- */
+*/
 
 module bsg_manycore_wrapper
   import bsg_manycore_pkg::*;
@@ -8,8 +8,10 @@ module bsg_manycore_wrapper
   #(parameter addr_width_p="inv" // in words
     , parameter data_width_p="inv"
 
-    , parameter num_tiles_x_p="inv"
-    , parameter num_tiles_y_p="inv"
+    /* , parameter num_tiles_x_p="inv" */
+    /* , parameter num_tiles_y_p="inv" */
+    , parameter num_tiles_x_p=-1
+    , parameter num_tiles_y_p=-1
 
     , parameter dmem_size_p="inv"
     , parameter icache_entries_p="inv"
@@ -20,6 +22,8 @@ module bsg_manycore_wrapper
     , parameter vcache_block_size_in_words_p="inv"
     , parameter vcache_sets_p="inv"
     , parameter branch_trace_en_p="inv"
+
+    , parameter int hetero_type_vec_p [0:num_tiles_y_p-1][0:num_tiles_x_p-1]  = '{default:0}
  
     , parameter num_cache_p="inv"
 
@@ -65,6 +69,8 @@ module bsg_manycore_wrapper
     ,.stub_e_p({num_tiles_y_p{1'b0}})
     ,.stub_w_p({num_tiles_y_p{1'b0}})
     ,.stub_s_p({num_tiles_x_p{1'b0}})
+
+    ,.hetero_type_vec_p(hetero_type_vec_p)
 
     ,.debug_p(0)
     ,.addr_width_p(addr_width_p)
