@@ -161,6 +161,7 @@ void cosim_main(uint32_t *exit_code, char * args) {
         svSetScope(scope);
 #endif
         bsg_pr_test_info("Unified Main Regression Test (COSIMULATION)\n");
+        printf("*********** Inside test_loader.c ***********\n");
         int rc = test_loader(argc, argv);
         *exit_code = rc;
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);

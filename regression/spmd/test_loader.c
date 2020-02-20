@@ -95,8 +95,71 @@ int test_loader(int argc, char **argv) {
         printf("[SPMD_LOADER][test_loader.c] After hb_mc_manycore_init()\n");
 
         /* initialize the tile */
+        // PP: hetero nodes require 4 vprocs
         hb_mc_coordinate_t target = hb_mc_coordinate(0,1);
+        /* hb_mc_coordinate_t target[4] = {hb_mc_coordinate(0,1), hb_mc_coordinate(1,1), */ 
+        /*                                 hb_mc_coordinate(0,2), hb_mc_coordinate(1,2)}; */
         hb_mc_coordinate_t origin = hb_mc_coordinate(0,1);
+
+        /* int i = 0; */
+        /* for(i = 0; i < 4; i++) { */
+
+        /*   printf("[SPMD_LOADER][test_loader.c] Setting up the %dth target\n", i); */
+
+        /*   // freeze the tile */
+        /*   printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_freeze()\n"); */
+        /*   err = hb_mc_tile_freeze(mc, &target[i]); */
+        /*   if (err != HB_MC_SUCCESS) { */
+        /*           bsg_pr_err("failed to freeze tile (%" PRId32 ", %" PRId32 "): %s\n", */
+        /*                      hb_mc_coordinate_get_x(target[i]), */
+        /*                      hb_mc_coordinate_get_y(target[i]), */
+        /*                      hb_mc_strerror(err)); */
+        /*           goto cleanup; */
+        /*   } */
+        /*   printf("[SPMD_LOADER][test_loader.c] After hb_mc_tile_freeze()\n"); */
+
+        /*   printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_set_origin()\n"); */
+        /*   // set its origin */
+        /*   err = hb_mc_tile_set_origin(mc, &target[i], &origin); */
+        /*   if (err != HB_MC_SUCCESS) { */
+        /*           bsg_pr_err("failed to set origin of (%" PRId32 ", %" PRId32 ") " */
+        /*                      "to (%" PRId32 ", %" PRId32 "): %s\n", */
+        /*                      hb_mc_coordinate_get_x(target[i]), */
+        /*                      hb_mc_coordinate_get_y(target[i]), */
+        /*                      hb_mc_coordinate_get_x(origin), */
+        /*                      hb_mc_coordinate_get_y(origin), */
+        /*                      hb_mc_strerror(err)); */
+        /*           goto cleanup; */
+        /*   } */
+
+        /*   printf("[SPMD_LOADER][test_loader.c] Before hb_mc_loader_load()\n"); */
+        /*   /1* load the program *1/ */
+        /*   err = hb_mc_loader_load(program_data, program_size, */
+        /*                           mc, &default_map, */
+        /*                           &target[i], 1); */
+        /*   if (err != HB_MC_SUCCESS) { */
+        /*           bsg_pr_err("failed to load binary '%s': %s\n", */
+        /*                      bin_path, hb_mc_strerror(err)); */
+        /*           return err; */
+        /*   } */
+
+        /* } */
+
+        /* for(i = 0; i < 4; i++) { */
+
+        /*   printf("[SPMD_LOADER][test_loader.c] Unfreezing the %dth target\n", i); */
+
+        /*   printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_unfreeze()\n"); */
+        /*   err = hb_mc_tile_unfreeze(mc, &target[i]); */
+        /*   if (err != HB_MC_SUCCESS) { */
+        /*           bsg_pr_err("failed to unfreeze tile (%" PRId32", %" PRId32 "): %s\n", */
+        /*                      hb_mc_coordinate_get_x(target[i]), */
+        /*                      hb_mc_coordinate_get_y(target[i]), */
+        /*                      hb_mc_strerror(err)); */
+        /*           goto cleanup; */
+        /*   } */
+
+        /* } */
 
         // freeze the tile
         printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_freeze()\n");
@@ -110,6 +173,7 @@ int test_loader(int argc, char **argv) {
         }
         printf("[SPMD_LOADER][test_loader.c] After hb_mc_tile_freeze()\n");
 
+        printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_set_origin()\n");
         // set its origin
         err = hb_mc_tile_set_origin(mc, &target, &origin);
         if (err != HB_MC_SUCCESS) {
@@ -123,6 +187,7 @@ int test_loader(int argc, char **argv) {
                 goto cleanup;
         }
 
+        printf("[SPMD_LOADER][test_loader.c] Before hb_mc_loader_load()\n");
         /* load the program */
         err = hb_mc_loader_load(program_data, program_size,
                                 mc, &default_map,
@@ -133,6 +198,7 @@ int test_loader(int argc, char **argv) {
                 return err;
         }
 
+        printf("[SPMD_LOADER][test_loader.c] Before hb_mc_tile_unfreeze()\n");
         err = hb_mc_tile_unfreeze(mc, &target);
         if (err != HB_MC_SUCCESS) {
                 bsg_pr_err("failed to unfreeze tile (%" PRId32", %" PRId32 "): %s\n",
@@ -142,8 +208,10 @@ int test_loader(int argc, char **argv) {
                 goto cleanup;
         }
 
+        printf("[SPMD_LOADER][test_loader.c] Before usleep(100)\n");
         usleep(100);
 
+        printf("[SPMD_LOADER][test_loader.c] Before entering infinite loop\n");
         while (1) {
                 hb_mc_packet_t pkt;
                 bsg_pr_dbg("Waiting for finish packet\n");
