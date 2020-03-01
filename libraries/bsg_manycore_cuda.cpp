@@ -1045,12 +1045,21 @@ int hb_mc_device_init_custom_dimensions (hb_mc_device_t *device,
  */
 static int hb_mc_device_program_load (hb_mc_device_t *device) { 
         int error; 
+        printf("[bsg_manycore_cuda.cpp] Inside hb_mc_device_program_load()\n");
 
         // Create list of tile coordinates 
-        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim);
+        // PP: HACK! i have to manually remove the xcel tiles from the tile list
+        // because the xcel is not supposed to handle tile freeze, loading
+        // instructions into the SRAM, etc.
+        /* uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim); */
+        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim) - 4;
         hb_mc_coordinate_t tile_list[num_tiles];
+        printf("[bsg_manycore_cuda.cpp] Hack to prevent xcels from freezing!\n");
+        printf("[bsg_manycore_cuda.cpp] Num tiles = %d\n", num_tiles);
         for (int tile_id = 0; tile_id < num_tiles; tile_id ++) {
                 tile_list[tile_id] = device->mesh->tiles[tile_id].coord;
+                printf("[bsg_manycore_cuda.cpp] tile_list[%d] = (y = %d, x = %d)\n", 
+                    tile_id, tile_list[tile_id].y, tile_list[tile_id].x);
         }
 
         // Freeze tiles
@@ -1555,11 +1564,20 @@ int hb_mc_device_finish (hb_mc_device_t *device) {
         int error;
 
 
+        // PP: HACK! i have to manually remove the xcel tiles from the tile list
+        // because the xcel is not supposed to handle tile freeze, loading
+        // instructions into the SRAM, etc.
+
         // Create list of tile coordinates 
-        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim);
+        /* uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim); */
+        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim) - 4;
+        printf("[bsg_manycore_cuda.cpp] Hack to prevent xcels from freezing!\n");
+        printf("[bsg_manycore_cuda.cpp] Num tiles = %d\n", num_tiles);
         hb_mc_coordinate_t tile_list[num_tiles];
         for (int tile_id = 0; tile_id < num_tiles; tile_id ++) {
                 tile_list[tile_id] = device->mesh->tiles[tile_id].coord;
+                printf("[bsg_manycore_cuda.cpp] tile_list[%d] = (y = %d, x = %d)\n", 
+                    tile_id, tile_list[tile_id].y, tile_list[tile_id].x);
         }
 
 
