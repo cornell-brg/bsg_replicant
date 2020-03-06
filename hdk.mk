@@ -52,9 +52,12 @@ $(info BSG MAKE INFO: Assuming remaining HDK variables are set)
 # running inside of a bladerunner-like environment, where aws-fpga is relative
 # to CL_DIR. If it is, then use it to configure our environment
 else ifneq ("$(wildcard $(CL_DIR)/../aws-fpga)","")
-$(warning $(shell echo -e "$(ORANGE)BSG MAKE WARN: Using $(CL_DIR)/../aws-fpga as AWS_FPGA_REPO_DIR variable$(NC)"))
+# $(warning $(shell echo -e "$(ORANGE)BSG MAKE WARN: Using $(CL_DIR)/../aws-fpga as AWS_FPGA_REPO_DIR variable$(NC)"))
+# PP: use globally installed aws-fpga repo
+$(warning $(shell echo -e "$(ORANGE)BSG MAKE WARN: Using $(BARE_PKGS_GLOBAL_PREFIX)/bladerunner/aws-fpga as AWS_FPGA_REPO_DIR variable$(NC)"))
 
-AWS_FPGA_REPO_DIR    = $(CL_DIR)/../aws-fpga
+# AWS_FPGA_REPO_DIR    = $(CL_DIR)/../aws-fpga
+AWS_FPGA_REPO_DIR    = $(BARE_PKGS_GLOBAL_PREFIX)/bladerunner/aws-fpga
 HDK_DIR              = $(AWS_FPGA_REPO_DIR)/hdk
 HDK_COMMON_DIR       = $(HDK_DIR)/common
 HDK_SHELL_DIR        = $(realpath $(HDK_COMMON_DIR)/shell_stable/)
