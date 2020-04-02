@@ -42,6 +42,7 @@ LIB_CXXSOURCES += $(LIBRARIES_PATH)/bsg_manycore_responder.cpp
 LIB_CXXSOURCES += $(LIBRARIES_PATH)/bsg_manycore_tile.cpp
 LIB_CXXSOURCES += $(LIBRARIES_PATH)/bsg_manycore_uart_responder.cpp
 LIB_CXXSOURCES += $(LIBRARIES_PATH)/bsg_manycore_trace_responder.cpp
+LIB_CSOURCES += $(LIBRARIES_PATH)/bsg_manycore_memsys.c
 
 LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore.h
 LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_bits.h
@@ -68,6 +69,8 @@ LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_packet.h
 LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_response_packet.h
 LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_request_packet.h
 LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_fifo.h
+LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_memsys.h
+LIB_HEADERS += $(LIBRARIES_PATH)/bsg_manycore_rom.h
 
 LIB_OBJECTS += $(patsubst %cpp,%o,$(LIB_CXXSOURCES))
 LIB_OBJECTS += $(patsubst %c,%o,$(LIB_CSOURCES))
@@ -76,7 +79,7 @@ $(LIB_OBJECTS): INCLUDES  = -I$(LIBRARIES_PATH)
 $(LIB_OBJECTS): INCLUDES += -I$(SDK_DIR)/userspace/include
 $(LIB_OBJECTS): INCLUDES += -I$(HDK_DIR)/common/software/include
 $(LIB_OBJECTS): INCLUDES += -I$(AWS_FPGA_REPO_DIR)/SDAccel/userspace/include
-$(LIB_OBJECTS): INCLUDES += -I$(BASEJUMP_STL_DIR)/bsg_test
+$(LIB_OBJECTS): INCLUDES += -I$(BASEJUMP_STL_DIR)/bsg_mem
 $(LIB_OBJECTS): CFLAGS    = -std=c11 -fPIC -D_GNU_SOURCE $(INCLUDES)
 $(LIB_OBJECTS): CXXFLAGS  = -std=c++11 -fPIC -D_GNU_SOURCE $(INCLUDES)
 $(LIB_OBJECTS): LDFLAGS   = -lfpga_mgmt -fPIC
@@ -95,6 +98,8 @@ LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_packet_id.o
 LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_eva.o
 LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_origin_eva_map.o
 LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_print_int_responder.o
+LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_memsys.o
+
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wall -Werror
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-unused-variable
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-unused-function

@@ -46,7 +46,7 @@ HARDWARE_PATH    := $(CL_DIR)/hardware
 REGRESSION_PATH  := $(CL_DIR)/regression
 TESTBENCH_PATH   := $(CL_DIR)/testbenches
 LIBRARIES_PATH   := $(CL_DIR)/libraries
-BSG_MACHINE_PATH := $(CL_DIR)
+MACHINES_PATH    := $(CL_DIR)/machines
 
 # Check if we are running inside of the BSG Bladerunner repository by searching
 # for project.mk. If project.mk is found, then we are and we should use
@@ -105,3 +105,7 @@ endif
 ifndef BSG_MANYCORE_DIR
 $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MANYCORE_DIR environment variable undefined. Defining is not recommended. Are you running from within Bladerunner?$(NC)"))
 endif
+
+# machine.mk defines BSG_MACHINE_PATH, which is the path to the current target
+# machine.
+include $(CL_DIR)/machine.mk

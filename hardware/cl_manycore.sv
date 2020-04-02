@@ -36,10 +36,10 @@ module cl_manycore
   import cl_manycore_pkg::*;
   import bsg_manycore_pkg::*;
   import bsg_manycore_addr_pkg::*;
-   import bsg_bladerunner_rom_pkg::*;
-   import bsg_bladerunner_mem_cfg_pkg::*;
+  import bsg_bladerunner_rom_pkg::*;
+  import bsg_bladerunner_mem_cfg_pkg::*;
    (
-`include "cl_ports.vh"
+  `include "cl_ports.vh"
     );
 
    // For some silly reason, you need to leave this up here...
@@ -65,8 +65,6 @@ module cl_manycore
 `include "unused_sh_bar1_template.inc"
 `include "unused_apppf_irq_template.inc"
 
-   localparam lc_clk_main_a0_p = 8000; // 8000 is 125 MHz
-
    //-------------------------------------------------
    // Wires
    //-------------------------------------------------
@@ -90,12 +88,12 @@ module cl_manycore
    always_ff @(negedge rst_main_n or posedge clk_main_a0)
      if (!rst_main_n)
        begin
-          pre_sync_rst_n  <= 0;
-          rst_main_n_sync <= 0;
+          pre_sync_rst_n  <= 1'b0;
+          rst_main_n_sync <= 1'b0;
        end
      else
        begin
-          pre_sync_rst_n  <= 1;
+          pre_sync_rst_n  <= 1'b1;
           rst_main_n_sync <= pre_sync_rst_n;
        end
 
@@ -274,7 +272,10 @@ module cl_manycore
 
    logic         core_clk;
    logic         core_reset;
+   logic         mem_clk;
 
+
+   
 `ifdef COSIM
    // This clock mux switches between the "fast" IO Clock and the Slow
    // Unsynthesizable "Core Clk". The assign logic below introduces
@@ -290,7 +291,7 @@ module cl_manycore
    BUFGMUX_inst
      (
       .O(core_clk), // 1-bit output: Clock output
-      .I0(clk_main_a0), // 1-bit input: Clock input (S=0)
+      .I0(mem_clk), // 1-bit input: Clock input (S=0)
       .I1(ns_core_clk), // 1-bit input: Clock input (S=1)
       .S(sh_cl_status_vdip_q2[0]) // 1-bit input: Clock select
       );
@@ -301,6 +302,24 @@ module cl_manycore
    // core_clk, and clk_main_a0 *are the same signal* (See BUFGMUX
    // above).
    assign core_reset = ~rst_main_n_sync;
+
+   // If we're using DRAMSIM3 we want the manycore clock to run at the
+   // same frequency as the memory interface clock. Otherwise, assume
+   // we want to run at the default F1 frequency.
+ `ifdef USING_DRAMSIM3
+   logic         hbm_clk;
+   logic         hbm_reset;
+   localparam lc_clk_main_a0_p = `DRAMSIM3_MEM_PKG::tck_ps;
+    bsg_nonsynth_clock_gen
+      #(.cycle_time_p(`DRAMSIM3_MEM_PKG::tck_ps))
+    clk_gen
+      (.o(hbm_clk));
+   assign mem_clk = hbm_clk;
+ `else
+   localparam lc_clk_main_a0_p = 8000; // 8000 is 125 MHz
+   assign mem_clk = clk_main_a0;
+ `endif
+
 `else
    assign core_clk = clk_main_a0;
    assign core_reset = ~rst_main_n_sync;
@@ -402,7 +421,7 @@ module cl_manycore
   localparam byte_offset_width_lp=`BSG_SAFE_CLOG2(data_width_p>>3);
   localparam cache_addr_width_lp=(addr_width_p-1+byte_offset_width_lp);
 
-  // hbm ramulator
+  // hbm DRAM Sim 3
 `ifdef USING_DRAMSIM3
 
   localparam hbm_channel_addr_width_p
@@ -419,13 +438,11 @@ module cl_manycore
 `endif
 
   if (mem_cfg_p == e_vcache_blocking_axi4_f1_dram
-    || mem_cfg_p ==e_vcache_blocking_axi4_f1_model
-    || mem_cfg_p == e_vcache_blocking_ramulator_hbm
+    || mem_cfg_p == e_vcache_blocking_axi4_f1_model
     || mem_cfg_p == e_vcache_non_blocking_axi4_f1_dram
-    || mem_cfg_p ==  e_vcache_non_blocking_axi4_f1_model
-    || mem_cfg_p == e_vcache_non_blocking_ramulator_hbm
-    || mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128
-    || mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_dma
+    || mem_cfg_p == e_vcache_non_blocking_axi4_f1_model
+    || mem_cfg_p == e_vcache_non_blocking_test_dramsim3_hbm2_4gb_x128
+    || mem_cfg_p == e_vcache_blocking_test_dramsim3_hbm2_4gb_x128) begin: lv1_dma
 
     // for now blocking and non-blocking shares the same wire, since interface is
     // the same. But it might change in the future.
@@ -458,6 +475,7 @@ module cl_manycore
         ,.addr_width_p(addr_width_p)
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
+        ,.id_p(i)
       ) mem_infty (
         .clk_i(core_clk)
         ,.reset_i(core_reset)
@@ -472,8 +490,10 @@ module cl_manycore
 
     bind bsg_nonsynth_mem_infinite infinite_mem_profiler #(
       .data_width_p(data_width_p)
+      ,.addr_width_p(addr_width_p)
       ,.x_cord_width_p(x_cord_width_p)
       ,.y_cord_width_p(y_cord_width_p)
+      ,.logfile_p("infinite_mem_stats.csv")
     ) infinite_mem_prof (
       .*
       ,.global_ctr_i($root.tb.card.fpga.CL.global_ctr)
@@ -484,9 +504,7 @@ module cl_manycore
   end
   else if (mem_cfg_p == e_vcache_blocking_axi4_f1_dram ||
            mem_cfg_p == e_vcache_blocking_axi4_f1_model ||
-           mem_cfg_p == e_vcache_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_vcache
-
+           mem_cfg_p == e_vcache_blocking_test_dramsim3_hbm2_4gb_x128) begin: lv1_vcache
 
     for (genvar i = 0; i < num_cache_p; i++) begin: vcache
 
@@ -538,8 +556,7 @@ module cl_manycore
   end // block: lv1_vcache
   else if (mem_cfg_p == e_vcache_non_blocking_axi4_f1_dram ||
            mem_cfg_p == e_vcache_non_blocking_axi4_f1_model ||
-           mem_cfg_p == e_vcache_non_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128) begin: lv1_vcache_nb
+           mem_cfg_p == e_vcache_non_blocking_test_dramsim3_hbm2_4gb_x128) begin: lv1_vcache_nb
 
     for (genvar i = 0; i < num_cache_p; i++) begin: vcache
       bsg_manycore_vcache_non_blocking #(
@@ -729,10 +746,8 @@ module cl_manycore
     );
 
   end // block: lv2_axi4
-  else if (mem_cfg_p == e_vcache_non_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128 ||
-           mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128) begin: lv2_ramulator_hbm
+  else if (mem_cfg_p == e_vcache_non_blocking_test_dramsim3_hbm2_4gb_x128 ||
+           mem_cfg_p == e_vcache_blocking_test_dramsim3_hbm2_4gb_x128) begin: lv2_simulated_hbm
 
     // checks that this configuration is supported
     // we do not support having fewer caches than channels
@@ -753,21 +768,9 @@ module cl_manycore
     // DDR is unused
 `include "unused_ddr_c_template.inc"
 
-    logic hbm_clk;
-    logic hbm_reset;
-
-    //500MHz
-    bsg_nonsynth_clock_gen
-`ifdef USING_DRAMSIM3
-      #(.cycle_time_p(`DRAMSIM3_MEM_PKG::tck_ps))
-`else
-      #(.cycle_time_p(2000))
-`endif
-    clk_gen
-      (.o(hbm_clk));
 
     logic [hbm_num_channels_p-1:0][hbm_channel_addr_width_p-1:0] hbm_ch_addr_lo;
-    logic [hbm_num_channels_p-1:0]                 	         hbm_req_yumi_li;
+    logic [hbm_num_channels_p-1:0]                               hbm_req_yumi_li;
     logic [hbm_num_channels_p-1:0]                               hbm_req_v_lo;
     logic [hbm_num_channels_p-1:0]                               hbm_write_not_read_lo;
 
@@ -786,7 +789,7 @@ module cl_manycore
       bsg_cache_to_test_dram
         #(.num_cache_p(num_cache_per_hbm_channel_p)
           ,.data_width_p(data_width_p)
-	  ,.dma_data_width_p(dma_data_width_p)
+          ,.dma_data_width_p(dma_data_width_p)
           ,.addr_width_p(cache_addr_width_lp)
           ,.block_size_in_words_p(block_size_in_words_p)
           ,.cache_bank_addr_width_p(hbm_cache_bank_addr_width_p)
@@ -822,7 +825,7 @@ module cl_manycore
 
          ,.dram_data_i(hbm_data_li[ch_i])
          ,.dram_data_v_i(hbm_data_v_li[ch_i])
-	 ,.dram_ch_addr_i(hbm_ch_addr_li[ch_i])
+         ,.dram_ch_addr_i(hbm_ch_addr_li[ch_i])
          );
     end
 
@@ -835,7 +838,7 @@ module cl_manycore
     // assign hbm clk and reset to core for now...
     //assign hbm_clk = core_clk;
     assign hbm_reset = core_reset;
-  end // block: lv2_ramulator_hbm
+  end // block: lv2_simulated_hbm
 
   // LEVEL 3
   //
@@ -894,38 +897,45 @@ module cl_manycore
    assign lv2_axi4.axi_rvalid           = m_axi4_manycore_rvalid;
    assign m_axi4_manycore_rready        = lv2_axi4.axi_rready;
   end
-  else if (mem_cfg_p == e_vcache_blocking_ramulator_hbm ||
-           mem_cfg_p == e_vcache_non_blocking_ramulator_hbm) begin: lv3_ramulator_hbm
-
-    bsg_nonsynth_ramulator_hbm
-      #(.num_channels_p(hbm_num_channels_p)
-        ,.data_width_p(hbm_data_width_p)
-        ,.channel_addr_width_p(hbm_channel_addr_width_p)
-        ,.init_mem_p(1)
-        //,.debug_p(1)
-        )
-    hbm
-      (.clk_i(lv2_ramulator_hbm.hbm_clk)
-       ,.reset_i(lv2_ramulator_hbm.hbm_reset)
-
-       ,.v_i(lv2_ramulator_hbm.hbm_req_v_lo)
-       ,.write_not_read_i(lv2_ramulator_hbm.hbm_write_not_read_lo)
-       ,.ch_addr_i(lv2_ramulator_hbm.hbm_ch_addr_lo)
-       ,.yumi_o(lv2_ramulator_hbm.hbm_req_yumi_li)
-
-       ,.data_v_i(lv2_ramulator_hbm.hbm_data_v_lo)
-       ,.data_i(lv2_ramulator_hbm.hbm_data_lo)
-       ,.data_yumi_o(lv2_ramulator_hbm.hbm_data_yumi_li)
-
-       ,.data_v_o(lv2_ramulator_hbm.hbm_data_v_li)
-       ,.data_o(lv2_ramulator_hbm.hbm_data_li)
-
-       );
-
-  end // block: lv3_ramulator_hbm
-  else if (mem_cfg_p == e_vcache_blocking_dramsim3_hbm2_4gb_x128 ||
-           mem_cfg_p == e_vcache_non_blocking_dramsim3_hbm2_4gb_x128) begin: lv3_dramsim3
+  else if (mem_cfg_p == e_vcache_blocking_test_dramsim3_hbm2_4gb_x128 ||
+           mem_cfg_p == e_vcache_non_blocking_test_dramsim3_hbm2_4gb_x128) begin: lv3_dramsim3
 `ifdef USING_DRAMSIM3
+
+    `declare_dramsim3_ch_addr_s_with_pkg(dram_ch_addr_dramsim3_s, `DRAMSIM3_MEM_PKG);
+    dram_ch_addr_dramsim3_s [hbm_num_channels_p-1:0] dramsim3_ch_addr_lo;
+    dram_ch_addr_dramsim3_s [hbm_num_channels_p-1:0] dramsim3_ch_addr_li;
+
+    typedef struct packed {
+      // the cache id is in the MSBs from cach_to_test_dram
+      // we map each cache to its own banks (if there less caches than banks)
+      logic [`dramsim3_bg_width_pkg(`DRAMSIM3_MEM_PKG)-1:0] bg;
+      logic [`dramsim3_ba_width_pkg(`DRAMSIM3_MEM_PKG)-1:0] ba;
+      logic [`dramsim3_ro_width_pkg(`DRAMSIM3_MEM_PKG)-1:0] ro;
+      logic [`dramsim3_co_width_pkg(`DRAMSIM3_MEM_PKG)-1:0] co;
+      logic [`dramsim3_byte_offset_width_pkg(`DRAMSIM3_MEM_PKG)-1:0] byte_offset;
+    } dram_ch_addr_cache_to_test_dram_s;
+
+    dram_ch_addr_cache_to_test_dram_s [hbm_num_channels_p-1:0] hbm_ch_addr_lo_cast;
+    dram_ch_addr_cache_to_test_dram_s [hbm_num_channels_p-1:0] hbm_ch_addr_li_cast;
+
+    assign hbm_ch_addr_lo_cast = lv2_simulated_hbm.hbm_ch_addr_lo;
+    assign lv2_simulated_hbm.hbm_ch_addr_li = hbm_ch_addr_li_cast;
+
+    for (genvar i = 0; i < hbm_num_channels_p; i++) begin
+      // mapping cache_to_test_dram => dramsim3
+      assign dramsim3_ch_addr_li[i].bg          = hbm_ch_addr_lo_cast[i].bg;
+      assign dramsim3_ch_addr_li[i].ba          = hbm_ch_addr_lo_cast[i].ba;
+      assign dramsim3_ch_addr_li[i].ro          = hbm_ch_addr_lo_cast[i].ro;
+      assign dramsim3_ch_addr_li[i].co          = hbm_ch_addr_lo_cast[i].co;
+      assign dramsim3_ch_addr_li[i].byte_offset = hbm_ch_addr_lo_cast[i].byte_offset;
+      // mapping dramsim3 => cache_to_test_dram
+      assign hbm_ch_addr_li_cast[i].bg          = dramsim3_ch_addr_lo[i].bg;
+      assign hbm_ch_addr_li_cast[i].ba          = dramsim3_ch_addr_lo[i].ba;
+      assign hbm_ch_addr_li_cast[i].ro          = dramsim3_ch_addr_lo[i].ro;
+      assign hbm_ch_addr_li_cast[i].co          = dramsim3_ch_addr_lo[i].co;
+      assign hbm_ch_addr_li_cast[i].byte_offset = dramsim3_ch_addr_lo[i].byte_offset;
+    end
+
     bsg_nonsynth_dramsim3
       #(.channel_addr_width_p(`DRAMSIM3_MEM_PKG::channel_addr_width_p)
         ,.data_width_p(`DRAMSIM3_MEM_PKG::data_width_p)
@@ -937,21 +947,21 @@ module cl_manycore
         //,.debug_p(1)
         ,.init_mem_p(1))
     dram
-      (.clk_i(lv2_ramulator_hbm.hbm_clk)
-       ,.reset_i(lv2_ramulator_hbm.hbm_reset)
+      (.clk_i(hbm_clk)
+       ,.reset_i(hbm_reset)
 
-       ,.v_i(lv2_ramulator_hbm.hbm_req_v_lo)
-       ,.write_not_read_i(lv2_ramulator_hbm.hbm_write_not_read_lo)
-       ,.ch_addr_i(lv2_ramulator_hbm.hbm_ch_addr_lo)
-       ,.yumi_o(lv2_ramulator_hbm.hbm_req_yumi_li)
+       ,.v_i(lv2_simulated_hbm.hbm_req_v_lo)
+       ,.write_not_read_i(lv2_simulated_hbm.hbm_write_not_read_lo)
+       ,.ch_addr_i(dramsim3_ch_addr_li)
+       ,.yumi_o(lv2_simulated_hbm.hbm_req_yumi_li)
 
-       ,.data_v_i(lv2_ramulator_hbm.hbm_data_v_lo)
-       ,.data_i(lv2_ramulator_hbm.hbm_data_lo)
-       ,.data_yumi_o(lv2_ramulator_hbm.hbm_data_yumi_li)
+       ,.data_v_i(lv2_simulated_hbm.hbm_data_v_lo)
+       ,.data_i(lv2_simulated_hbm.hbm_data_lo)
+       ,.data_yumi_o(lv2_simulated_hbm.hbm_data_yumi_li)
 
-       ,.data_o(lv2_ramulator_hbm.hbm_data_li)
-       ,.data_v_o(lv2_ramulator_hbm.hbm_data_v_li)
-       ,.read_done_ch_addr_o(lv2_ramulator_hbm.hbm_ch_addr_li));
+       ,.data_o(lv2_simulated_hbm.hbm_data_li)
+       ,.data_v_o(lv2_simulated_hbm.hbm_data_v_li)
+       ,.read_done_ch_addr_o(dramsim3_ch_addr_lo));
 `endif
   end
 
@@ -1034,16 +1044,16 @@ module cl_manycore
       .m_axi_aresetn(rst_main_n),
 
       // Master Interface Write Address Port
-      .m_axi_awid(cl_sh_ddr_awid),
+      .m_axi_awid(cl_sh_ddr_awid[5:0]),
       .m_axi_awaddr(cl_sh_ddr_awaddr),
       .m_axi_awlen(cl_sh_ddr_awlen),
       .m_axi_awsize(cl_sh_ddr_awsize),
       .m_axi_awburst(cl_sh_ddr_awburst),
-      .m_axi_awlock(cl_sh_ddr_awlock),
-      .m_axi_awcache(cl_sh_ddr_awcache),
-      .m_axi_awprot(cl_sh_ddr_awprot),
-      .m_axi_awregion(cl_sh_ddr_awregion),
-      .m_axi_awqos(cl_sh_ddr_awqos),
+      .m_axi_awlock(),
+      .m_axi_awcache(),
+      .m_axi_awprot(),
+      .m_axi_awregion(),
+      .m_axi_awqos(),
       .m_axi_awvalid(cl_sh_ddr_awvalid),
       .m_axi_awready(sh_cl_ddr_awready),
 
@@ -1055,27 +1065,27 @@ module cl_manycore
       .m_axi_wready(sh_cl_ddr_wready),
 
       // Master Interface Write Response Ports
-      .m_axi_bid(sh_cl_ddr_bid),
+      .m_axi_bid(sh_cl_ddr_bid[5:0]),
       .m_axi_bresp(sh_cl_ddr_bresp),
       .m_axi_bvalid(sh_cl_ddr_bvalid),
       .m_axi_bready(cl_sh_ddr_bready),
 
       // Master Interface Read Address Port
-      .m_axi_arid(cl_sh_ddr_arid),
+      .m_axi_arid(cl_sh_ddr_arid[5:0]),
       .m_axi_araddr(cl_sh_ddr_araddr),
       .m_axi_arlen(cl_sh_ddr_arlen),
       .m_axi_arsize(cl_sh_ddr_arsize),
       .m_axi_arburst(cl_sh_ddr_arburst),
-      .m_axi_arlock(cl_sh_ddr_arlock),
-      .m_axi_arcache(cl_sh_ddr_arcache),
-      .m_axi_arprot(cl_sh_ddr_arprot),
-      .m_axi_arregion(cl_sh_ddr_arregion),
-      .m_axi_arqos(cl_sh_ddr_arqos),
+      .m_axi_arlock(),
+      .m_axi_arcache(),
+      .m_axi_arprot(),
+      .m_axi_arregion(),
+      .m_axi_arqos(),
       .m_axi_arvalid(cl_sh_ddr_arvalid),
       .m_axi_arready(sh_cl_ddr_arready),
 
       // Master Interface Read Data Ports
-      .m_axi_rid(sh_cl_ddr_rid),
+      .m_axi_rid(sh_cl_ddr_rid[5:0]),
       .m_axi_rdata(sh_cl_ddr_rdata),
       .m_axi_rresp(sh_cl_ddr_rresp),
       .m_axi_rlast(sh_cl_ddr_rlast),
@@ -1117,7 +1127,7 @@ module cl_manycore
    assign m_axi4_manycore_bvalid = sh_cl_ddr_bvalid;
    assign cl_sh_ddr_bready = m_axi4_manycore_bready;
 
-   assign cl_sh_ddr_arid = m_axi4_manycore_arid;
+   assign cl_sh_ddr_arid[5:0] = m_axi4_manycore_arid;
    assign cl_sh_ddr_araddr = m_axi4_manycore_araddr;
    assign cl_sh_ddr_arlen = m_axi4_manycore_arlen;
    assign cl_sh_ddr_arsize = m_axi4_manycore_arsize;
@@ -1284,8 +1294,8 @@ module cl_manycore
      #(
        .x_cord_width_p(x_cord_width_p)
        ,.y_cord_width_p(y_cord_width_p)
-       ,.header_print_x_cord_p(0)
-       ,.header_print_y_cord_p(2)
+       ,.origin_x_cord_p(0)
+       ,.origin_y_cord_p(2)
        ,.icache_tag_width_p(icache_tag_width_p)
        ,.icache_entries_p(icache_entries_p)
        ,.data_width_p(data_width_p)

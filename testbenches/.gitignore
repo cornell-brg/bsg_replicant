@@ -1,5 +1,5 @@
-synopsys_sim.setup*
 vcs_simlibs
+synopsys_sim.setup
 .cxl.*
 .vlogan*
 AN.DB
@@ -15,4 +15,6 @@ checkpoints
 *.so
 *.tmp
 *.prelim
+.test_*
 test_*
+msg_config

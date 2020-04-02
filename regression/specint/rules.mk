@@ -32,6 +32,10 @@
 # Manycore. It contains makefiles to compile specint programs.
 SPECINT_SRC_PATH = $(BSG_MANYCORE_DIR)/software/spmd/specint2000
 
+# Force rebuild targets that depend on .FORCE, like the
+# Manycore/SPMD/CUDA Binaries
+.FORCE:
+
 .PHONY: test_%.clean $(USER_RULES)
 
 $(USER_RULES): test_%.rule: $(SPECINT_SRC_PATH)/%.riscv
@@ -43,9 +47,9 @@ $(USER_CLEAN_RULES):
 	BSG_IP_CORES_DIR=$(BASEJUMP_STL_DIR) \
 	IGNORE_CADENV=1 \
 	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	$(MAKE) -C $(SPECINT_SRC_PATH) -f Makefile.$(subst .clean,,$(subst test_,,$@)) clean
+	$(MAKE) -j1 -C $(SPECINT_SRC_PATH) -f Makefile.$(subst .clean,,$(subst test_,,$@)) clean
 
-$(SPECINT_SRC_PATH)/%.riscv: $(CL_DIR)/Makefile.machine.include
+$(SPECINT_SRC_PATH)/%.riscv: $(BSG_MACHINE_PATH)/Makefile.machine.include
 	CL_DIR=$(CL_DIR) \
 	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
 	BASEJUMP_STL_DIR=$(BASEJUMP_STL_DIR) \
@@ -54,4 +58,4 @@ $(SPECINT_SRC_PATH)/%.riscv: $(CL_DIR)/Makefile.machine.include
 	bsg_tiles_Y=$(TILE_GROUP_DIM_Y) \
 	IGNORE_CADENV=1 \
 	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	$(MAKE) -C $(SPECINT_SRC_PATH) -f Makefile.$(subst .riscv,,$(notdir $@)) clean $(notdir $@)
+	$(MAKE) -j1 -C $(SPECINT_SRC_PATH) -f Makefile.$(subst .riscv,,$(notdir $@)) clean $(notdir $@)

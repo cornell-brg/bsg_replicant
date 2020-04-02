@@ -32,7 +32,11 @@
 # Manycore. It contains directories with RISC-V programs.
 SPMD_SRC_PATH = $(BSG_MANYCORE_DIR)/software/spmd
 
-.PHONY: test_%.clean $(USER_RULES)
+.PHONY: test_%.clean test_%.rule
+
+# Force rebuild targets that depend on .FORCE, like the
+# Manycore/SPMD/CUDA Binaries
+.FORCE:
 
 $(USER_RULES): test_%.rule: $(SPMD_SRC_PATH)/%/main.riscv
 
@@ -43,9 +47,9 @@ $(USER_CLEAN_RULES):
 	BSG_IP_CORES_DIR=$(BASEJUMP_STL_DIR) \
 	IGNORE_CADENV=1 \
 	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	$(MAKE) -C $(SPMD_SRC_PATH)/$(subst .clean,,$(subst test_,,$@)) clean
+	$(MAKE) -j1 -C $(SPMD_SRC_PATH)/$(subst .clean,,$(subst test_,,$@)) clean
 
-$(SPMD_SRC_PATH)/%/main.riscv: $(CL_DIR)/Makefile.machine.include
+$(SPMD_SRC_PATH)/%/main.riscv: $(BSG_MACHINE_PATH)/Makefile.machine.include .FORCE
 	CL_DIR=$(CL_DIR) \
 	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
 	BASEJUMP_STL_DIR=$(BASEJUMP_STL_DIR) \
@@ -54,4 +58,4 @@ $(SPMD_SRC_PATH)/%/main.riscv: $(CL_DIR)/Makefile.machine.include
 	bsg_tiles_Y=$(TILE_GROUP_DIM_Y) \
 	IGNORE_CADENV=1 \
 	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	$(MAKE) -C $(dir $@) clean $(notdir $@)
+	$(MAKE) -j1 -C $(dir $@) clean $(notdir $@)

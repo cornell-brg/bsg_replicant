@@ -25,38 +25,12 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-module cosim_wrapper();
-   import cl_manycore_pkg::*;
-   initial begin
-      int exit_code;
-      string args;
-      longint t;
-      $value$plusargs("c_args=%s", args);
+#pragma once
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <string.h>
+#include <time.h>
+#include <stdlib.h>
 
-      $display("==================== BSG MACHINE SETTINGS: ====================");
-      $display("[INFO][TESTBENCH] BSG_MACHINE_GLOBAL_X                 = %d", num_tiles_x_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_GLOBAL_Y                 = %d", num_tiles_y_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_VCACHE_SET               = %d", sets_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_VCACHE_WAY               = %d", ways_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_VCACHE_BLOCK_SIZE_WORDS  = %d", block_size_in_words_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_MAX_EPA_WIDTH            = %d", addr_width_p);
-      $display("[INFO][TESTBENCH] BSG_MACHINE_MEM_CFG                  = %s", mem_cfg_p.name());
-
-      tb.power_up();
-
-      tb.cosim_main(exit_code, args);
-      
-      #50ns;
-       
-      tb.power_down();
-      if(exit_code < 0) 
-          $display("BSG COSIM FAIL: Test failed with exit code: %d", exit_code);
-      else 
-          $display("BSG COSIM PASS: Test passed!");
-          
-      $finish;
-   end
-
-endmodule // cosim_wrapper
-
-
+#include "cuda_tests.h"

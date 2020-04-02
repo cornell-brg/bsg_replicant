@@ -32,14 +32,14 @@ int test_rom (int argc, char **argv) {
         int rc = 0, fail = 0;
         uint32_t unexpected, expected, minexpected, maxexpected, result;
         uint32_t vcache_assoc, vcache_sets, vcache_block_words;
-        uint32_t vcache_assoc_expect_max = 32, vcache_sets_expect = 64, vcache_block_words_expect = 16;
+        uint32_t vcache_assoc_expect_max = 32, vcache_sets_expect = 64;
         uint32_t major_version_max = 4; uint32_t minor_version_max = 10, minor_version_min = 0;
-
+        uint32_t dram_size = 0, dram_bank_size = 0, n_dram_co = 0;
         hb_mc_dimension_t dim;
         hb_mc_coordinate_t host;
         const hb_mc_config_t *config;
         hb_mc_manycore_t mc = {0};
-
+        hb_mc_memsys_id_t memsysid;
         char *path;
         struct arguments_none args = {NULL};
 
@@ -254,12 +254,28 @@ int test_rom (int argc, char **argv) {
         }
 
         vcache_block_words = hb_mc_config_get_vcache_block_words(config);
-        bsg_pr_test_info("Checking that V-Cache block size in words is %" PRIu32 "\n", vcache_block_words_expect);
-        if (vcache_block_words != vcache_block_words_expect) {
+        bsg_pr_test_info("Checking that V-Cache block size in words is >= 0 \n");
+        if (vcache_block_words <= 0) {
                 bsg_pr_test_err("Unexpected V-Cache block size: "
                                 "Got %" PRIu32 " words, "
-                                "Expected %" PRIu32 " words\n",
-				vcache_block_words, vcache_block_words_expect);
+                                "Expected >=0 words\n",
+                                vcache_block_words);
+                fail = 1;
+        }
+
+        dram_size = hb_mc_config_get_dram_size(config);
+        n_dram_co = hb_mc_config_get_num_dram_coordinates(config);
+        dram_bank_size = hb_mc_config_get_dram_bank_size(config);
+        memsysid = hb_mc_config_memsys_id(config);
+
+        bsg_pr_test_info("Checking that DRAM bank size = DRAM size / DRAM coordinates for %s\n",
+                         hb_mc_memsys_id_to_string(memsysid));
+
+        if (!(dram_bank_size == (dram_size/n_dram_co))) {
+                bsg_pr_test_err("Failed: DRAM size = %" PRIu32 " bytes, "
+                                "DRAM bank size = %" PRIu32 " bytes, "
+                                "DRAM coordinates = %" PRIu32 "\n",
+                                dram_size, dram_bank_size, n_dram_co);
                 fail = 1;
         }
 
