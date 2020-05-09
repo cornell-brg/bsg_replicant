@@ -81,6 +81,9 @@ INDEPENDENT_TESTS += test_conv2d
 # PP: add the VVADD accelerator test
 INDEPENDENT_TESTS += test_vec_add_xcel
 
+# PP: add the CGRA accelerator test
+INDEPENDENT_TESTS += test_cgra_xcel
+
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 
