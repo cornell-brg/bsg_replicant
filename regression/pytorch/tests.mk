@@ -28,59 +28,15 @@
 # This Makefile fragment defines all of the regression tests (and the
 # source path) for this sub-directory.
 
-REGRESSION_TESTS_TYPE = cuda
+REGRESSION_TESTS_TYPE = pytorch
 SRC_PATH=$(REGRESSION_PATH)/$(REGRESSION_TESTS_TYPE)/
-
-TILE_GROUP_DIM_X = 2
-TILE_GROUP_DIM_Y = 2
 
 # "Unified tests" all use the generic test top-level:
 # test_unified_main.c
-UNIFIED_TESTS = test_scalar_print
-UNIFIED_TESTS += test_empty
-UNIFIED_TESTS += test_tile_info
-UNIFIED_TESTS += test_barrier_deprecated
-UNIFIED_TESTS += test_barrier
-UNIFIED_TESTS += test_striped
+UNIFIED_TESTS = test_pytorch
 
 # "Independent Tests" use a per-test <test_name>.c file
-INDEPENDENT_TESTS += test_binary_load_buffer
-INDEPENDENT_TESTS += test_empty_parallel
-INDEPENDENT_TESTS += test_multiple_binary_load
-INDEPENDENT_TESTS += test_host_memset
-INDEPENDENT_TESTS += test_stack_load
-INDEPENDENT_TESTS += test_dram_load_store
-INDEPENDENT_TESTS += test_dram_host_allocated
-INDEPENDENT_TESTS += test_dram_device_allocated
-INDEPENDENT_TESTS += test_device_memset
-INDEPENDENT_TESTS += test_device_memcpy
-INDEPENDENT_TESTS += test_vec_add
-INDEPENDENT_TESTS += test_vec_add_dma
-INDEPENDENT_TESTS += test_vec_add_parallel
-INDEPENDENT_TESTS += test_vec_add_parallel_multi_grid
-INDEPENDENT_TESTS += test_vec_add_serial_multi_grid
-INDEPENDENT_TESTS += test_vec_add_shared_mem
-INDEPENDENT_TESTS += test_max_pool2d
-INDEPENDENT_TESTS += test_shared_mem
-INDEPENDENT_TESTS += test_shared_mem_load_store
-INDEPENDENT_TESTS += test_matrix_mul
-INDEPENDENT_TESTS += test_matrix_mul_shared_mem
-
-INDEPENDENT_TESTS += test_float_all_ops
-INDEPENDENT_TESTS += test_float_vec_add
-INDEPENDENT_TESTS += test_float_vec_add_shared_mem
-INDEPENDENT_TESTS += test_float_vec_mul
-INDEPENDENT_TESTS += test_float_vec_div
-INDEPENDENT_TESTS += test_float_vec_exp
-INDEPENDENT_TESTS += test_float_vec_sqrt
-INDEPENDENT_TESTS += test_float_vec_log
-INDEPENDENT_TESTS += test_float_matrix_mul
-INDEPENDENT_TESTS += test_float_matrix_mul_shared_mem
-INDEPENDENT_TESTS += test_softmax
-INDEPENDENT_TESTS += test_log_softmax
-INDEPENDENT_TESTS += test_conv1d
-INDEPENDENT_TESTS += test_conv2d
-INDEPENDENT_TESTS += test_hammer_cache
+INDEPENDENT_TESTS := test_lenet5
 
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
@@ -90,6 +46,7 @@ DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
 CDEFINES   += $(DEFINES)
 CXXDEFINES += $(DEFINES)
 
-FLAGS     = -g -Wall
-CFLAGS   += -std=c99 $(FLAGS) 
-CXXFLAGS += -std=c++11 $(FLAGS)
+FLAGS     = -g -Wall $(shell python3-config --cflags) -O1 
+CFLAGS   += -std=c99 $(FLAGS)
+CXXFLAGS += -std=c++11 $(FLAGS) 
+LDFLAGS  += $(shell python3-config --ldflags)

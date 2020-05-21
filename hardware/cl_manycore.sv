@@ -29,14 +29,11 @@
  *  cl_manycore.v
  */
 
-`include "bsg_bladerunner_rom_pkg.vh"
-
-
 module cl_manycore
   import cl_manycore_pkg::*;
   import bsg_manycore_pkg::*;
   import bsg_manycore_addr_pkg::*;
-  import bsg_bladerunner_rom_pkg::*;
+  import bsg_bladerunner_pkg::*;
   import bsg_bladerunner_mem_cfg_pkg::*;
    (
   `include "cl_ports.vh"
@@ -469,10 +466,13 @@ module cl_manycore
    // LEVEL 1
   if (mem_cfg_p == e_infinite_mem) begin
     // each column has a nonsynth infinite memory
+    localparam infmem_els_lp = 1<<(addr_width_p-$clog2(num_cache_p));
+
     for (genvar i = 0; i < num_cache_p; i++) begin
       bsg_nonsynth_mem_infinite #(
         .data_width_p(data_width_p)
         ,.addr_width_p(addr_width_p)
+        ,.mem_els_p(infmem_els_lp)
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
         ,.id_p(i)
@@ -548,8 +548,9 @@ module cl_manycore
     ) vcache_prof (
       .*
       ,.global_ctr_i($root.tb.card.fpga.CL.global_ctr)
-      ,.print_stat_v_i($root.tb.card.fpga.CL.print_stat_v_lo)
-      ,.print_stat_tag_i($root.tb.card.fpga.CL.print_stat_tag_lo)
+      ,.print_stat_v_i($root.tb.card.fpga.CL.print_stat_v)
+      ,.print_stat_tag_i($root.tb.card.fpga.CL.print_stat_tag)
+      ,.trace_en_i($root.tb.card.fpga.CL.trace_en)
     );
     // synopsys translate_on
 
@@ -1183,10 +1184,7 @@ module cl_manycore
     .link_sif_i      (axil_link_sif_li  ),
     .link_sif_o      (axil_link_sif_lo  ),
     .my_x_i          (mcl_x_cord_li     ),
-    .my_y_i          (mcl_y_cord_li     ),
-    // trace
-    .print_stat_v_o  (print_stat_v_lo   ),
-    .print_stat_tag_o(print_stat_tag_lo )
+    .my_y_i          (mcl_y_cord_li     )
   );
 
 `ifdef COSIM
@@ -1309,6 +1307,12 @@ module cl_manycore
       ,.print_stat_tag_i($root.tb.card.fpga.CL.print_stat_tag)
       ,.trace_en_i($root.tb.card.fpga.CL.trace_en)
       );
+
+    bind vanilla_core nb_waw_detector #(
+      .data_width_p(data_width_p)
+      ,.x_cord_width_p(x_cord_width_p)
+      ,.y_cord_width_p(y_cord_width_p)
+    ) waw0 (.*);
 
 
    // synopsys translate on

@@ -247,7 +247,33 @@ extern "C" {
                                  enum hb_mc_memcpy_kind kind);
 
 
+        /**
+         * Copies a buffer from src on the host/device DRAM to dst on device DRAM/host.
+         * @param[in]  device        Pointer to device
+         * @parma[in]  daddr         EVA address of destination to be copied into
+         * @parma[in]  haddr         Host address of source to be copied from
+         * @param[in]  bytes         Size of buffer to be copied
+         * @return HB_MC_SUCCESS if succesful. Otherwise an error code is returned.
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_memcpy_to_device(hb_mc_device_t *device,
+                                          hb_mc_eva_t daddr,
+                                          const void *haddr,
+                                          uint32_t bytes);
 
+        /**
+         * Copies a buffer from src on the host/device DRAM to dst on device DRAM/host.
+         * @param[in]  device        Pointer to device
+         * @parma[in]  haddr         Host address of source to be copied into
+         * @parma[in]  daddr         EVA address of destination to be copied from
+         * @param[in]  bytes         Size of buffer to be copied
+         * @return HB_MC_SUCCESS if succesful. Otherwise an error code is returned.
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_memcpy_to_host(hb_mc_device_t *device,
+                                        void       *haddr,
+                                        hb_mc_eva_t daddr,
+                                        uint32_t bytes);
 
 
         /**
@@ -364,6 +390,25 @@ extern "C" {
         __attribute__((warn_unused_result))
         int hb_mc_device_dma_to_host(hb_mc_device_t *device, const hb_mc_dma_dtoh_t *jobs, size_t count);
 
+        /**
+         * Convenience macro for calling a CUDA function and handling an error return code.
+         * @param[in] stmt  A C/C++ statement that evaluates to an integer return code.
+         *
+         * Example:
+         * CUDA_CALL(hb_mc_device_malloc(&device, ...));
+         *
+         * The return code must be an integer defined in bsg_manycore_errno.h - otherwise behavior is undefined.
+         * This macro will cause the invoking to return if an error code is returned.
+         * An error message will be printing with the code statement that failed.
+         */
+#define BSG_CUDA_CALL(stmt)                                             \
+        {                                                               \
+                int __r = stmt;                                         \
+                if (__r != HB_MC_SUCCESS) {                             \
+                        bsg_pr_err("'%s' failed: %s\n", #stmt, hb_mc_strerror(__r)); \
+                        return __r;                                     \
+                }                                                       \
+        }
 
 #ifdef __cplusplus
 }
