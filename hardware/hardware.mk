@@ -66,7 +66,7 @@ CL_MANYCORE_VCACHE_BLOCK_SIZE_WORDS  := $(BSG_MACHINE_VCACHE_BLOCK_SIZE_WORDS)
 CL_MANYCORE_VCACHE_MISS_FIFO_ELS     := $(BSG_MACHINE_VCACHE_MISS_FIFO_ELS)
 CL_MANYCORE_VCACHE_STRIPE_SIZE_WORDS := $(BSG_MACHINE_VCACHE_STRIPE_SIZE_WORDS)
 CL_MANYCORE_IO_REMOTE_LOAD_CAP       := $(BSG_MACHINE_IO_REMOTE_LOAD_CAP)
-CL_MANYCORE_IO_HOST_CREDITS_CAP      := $(BSG_MACHINE_IO_HOST_CREDITS_CAP)
+CL_MANYCORE_IO_PKTS_CAP              := $(BSG_MACHINE_IO_HOST_CREDITS_CAP)
 CL_MANYCORE_IO_EP_MAX_OUT_CREDITS    := $(BSG_MACHINE_IO_EP_MAX_OUT_CREDITS)
 CL_MANYCORE_BRANCH_TRACE_EN          := $(BSG_MACHINE_BRANCH_TRACE_EN)
 CL_MANYCORE_DRAM_BANK_SIZE_WORDS     := $(BSG_MACHINE_DRAM_BANK_SIZE_WORDS)
@@ -202,9 +202,41 @@ $(BSG_MACHINE_PATH)/bsg_bladerunner_configuration.rom: $(BSG_MACHINE_PATH)/Makef
 	@echo $(call dec2bin,$(CL_MANYCORE_VCACHE_STRIPE_SIZE_WORDS)) >> $@.temp
 	@echo $(call dec2bin,$(CL_MANYCORE_VCACHE_MISS_FIFO_ELS)) >> $@.temp
 	@echo $(call dec2bin,$(CL_MANYCORE_IO_REMOTE_LOAD_CAP)) >> $@.temp
-	@echo $(call dec2bin,$(CL_MANYCORE_IO_HOST_CREDITS_CAP)) >> $@.temp
+	@echo $(call dec2bin,$(CL_MANYCORE_IO_PKTS_CAP)) >> $@.temp
 	@echo $(call dec2bin,$(CL_MANYCORE_IO_EP_MAX_OUT_CREDITS)) >> $@.temp
 	@cat $(BSG_MACHINE_PATH)/bsg_bladerunner_memsys.rom >> $@.temp
+	mv $@.temp $@
+
+# This target generates a C header file with defines for machine parameters
+$(BSG_MACHINE_PATH)/bsg_manycore_machine.h: $(BSG_MACHINE_PATH)/Makefile.machine.include
+	@echo "#ifndef BSG_MANYCORE_MACHINE_H" >  $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_H" >> $@.temp
+	@echo "/* Chip address and data width */" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_MAX_EPA_WIDTH $(CL_MANYCORE_MAX_EPA_WIDTH)" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_DATA_WIDTH    $(CL_MANYCORE_DATA_WIDTH)"    >> $@.temp
+	@echo "/* Chip network dimensions */"     >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_DIM_X         $(CL_MANYCORE_DIM_X)"         >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_DIM_Y         $(CL_MANYCORE_DIM_Y)"         >> $@.temp
+	@echo "/* Host coordinates */"            >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_HOST_COORD_X  \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_HOST_COORD_X)"  >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_HOST_COORD_Y  \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_HOST_COORD_Y)"  >> $@.temp
+	@echo "/* L2 cache parameters */"         >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_WAYS   \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_VCACHE_WAYS)"   >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_BANK_SETS   \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_VCACHE_SETS)" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_BLOCK_SIZE_WORDS \\"  >> $@.temp
+	@echo "    $(CL_MANYCORE_VCACHE_BLOCK_SIZE_WORDS)" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_BANK_STRIPE_SIZE_WORDS \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_VCACHE_STRIPE_SIZE_WORDS)" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_BANKS \\" >> $@.temp
+	@echo "    (2 * (BSG_MANYCORE_MACHINE_DIM_X))" >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_SETS \\" >> $@.temp
+	@echo "    ((BSG_MANYCORE_MACHINE_VCACHE_BANK_SETS)*(BSG_MANYCORE_MACHINE_VCACHE_BANKS))" \
+		>> $@.temp
+	@echo "#endif" >> $@.temp
 	mv $@.temp $@
 
 # Each manycore design on has a set of parameters that define
@@ -225,6 +257,7 @@ $(BSG_MACHINE_PATH)/f1_parameters.vh: $(BSG_MACHINE_PATH)/Makefile.machine.inclu
 	@echo "\`define CL_MANYCORE_MEM_CFG $(CL_MANYCORE_MEM_CFG)" >> $@
 	@echo "\`define CL_MANYCORE_BRANCH_TRACE_EN $(CL_MANYCORE_BRANCH_TRACE_EN)" >> $@
 	@echo "\`define CL_MANYCORE_IO_EP_MAX_OUT_CREDITS $(CL_MANYCORE_IO_EP_MAX_OUT_CREDITS)" >> $@
+	@echo "\`define CL_MANYCORE_IO_PKTS_CAP $(CL_MANYCORE_IO_PKTS_CAP)" >> $@
 	@echo "\`define CL_MANYCORE_DRAM_CHANNELS $(CL_MANYCORE_DRAM_CHANNELS)" >> $@
 	@echo "\`define CL_MANYCORE_DRAM_BANK_SIZE_WORDS $(CL_MANYCORE_DRAM_BANK_SIZE_WORDS)" >> $@
 	@echo "\`define CL_MANYCORE_VCACHE_DMA_DATA_WIDTH $(CL_MANYCORE_VCACHE_DMA_DATA_WIDTH)" >> $@
