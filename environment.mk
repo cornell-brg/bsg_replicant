@@ -38,15 +38,17 @@ ORANGE=\033[0;33m
 RED=\033[0;31m
 NC=\033[0m
 
+ifndef __BSG_ENVIRONMENT_MK
+__BSG_ENVIRONMENT_MK := 1
+
 # Name of this project
 PROJECT = cl_manycore
 
 CL_DIR           := $(shell git rev-parse --show-toplevel)
 HARDWARE_PATH    := $(CL_DIR)/hardware
-REGRESSION_PATH  := $(CL_DIR)/regression
-TESTBENCH_PATH   := $(CL_DIR)/testbenches
 LIBRARIES_PATH   := $(CL_DIR)/libraries
 MACHINES_PATH    := $(CL_DIR)/machines
+EXAMPLES_PATH    := $(CL_DIR)/examples
 
 # Check if we are running inside of the BSG Bladerunner repository by searching
 # for project.mk. If project.mk is found, then we are and we should use
@@ -106,6 +108,14 @@ ifndef BSG_MANYCORE_DIR
 $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MANYCORE_DIR environment variable undefined. Defining is not recommended. Are you running from within Bladerunner?$(NC)"))
 endif
 
-# machine.mk defines BSG_MACHINE_PATH, which is the path to the current target
-# machine.
+# cadenv.mk defines the CAD environment (for BSG people)
+include $(CL_DIR)/cadenv.mk
+
+# machine.mk defines BSG_MACHINE_PATH, which is the path to the target machine
 include $(CL_DIR)/machine.mk
+
+# platform.mk defines BSG_PLATFORM_PATH, which is the host platform to
+# simulate (VCS or Verilator) or run on (AWS)
+include $(CL_DIR)/platform.mk
+
+endif

@@ -25,6 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+ifndef __BSG_MACHINE_MK
+__BSG_MACHINE_MK := 1
+
 # BSG_F1_DIR: The path to the BSG F1 repository
 ifndef BSG_F1_DIR
 $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_F1_DIR is not defined$(NC)"))
@@ -35,7 +38,9 @@ endif
 
 # To switch machines, simply switch the path of BSG_MACHINE_PATH to
 # another directory with a Makefile.machine.include file.
-BSG_MACHINE_PATH ?= $(BSG_F1_DIR)/machines/4x4_fast_n_fake
+BSG_MACHINE_PATH ?= $(BSG_F1_DIR)/machines/baseline_v0_32_16
 
 # Convert the machine path to an abspath
 override BSG_MACHINE_PATH := $(abspath $(BSG_MACHINE_PATH))
+
+endif

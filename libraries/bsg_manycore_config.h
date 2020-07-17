@@ -455,21 +455,9 @@ extern "C" {
          * @param[in] cfg A configuration initialized from the manycore ROM.
          * @return the host capacity for batching requests.
          */
-        static inline uint32_t hb_mc_config_get_io_host_credits_cap(const hb_mc_config_t *cfg)
+        static inline uint32_t hb_mc_config_get_transmit_vacancy_max(const hb_mc_config_t *cfg)
         {
                 return cfg->io_host_credits_cap;
-        }
-
-        /**
-         * Return the threshold for host to update its cached credits.
-         * @param[in] cfg A configuration initialized from the manycore ROM.
-         * @return the threshold for host to update its cached credits.
-         */
-        static inline uint32_t hb_mc_config_get_io_credit_update_threshold(const hb_mc_config_t *cfg)
-        {
-                return cfg->io_host_credits_cap;
-                // we can also set half of the max host credits.
-                // return cfg->io_host_credits_cap/2;
         }
 
         /**
@@ -493,7 +481,7 @@ extern "C" {
         }
 
         /**
-         * Return the number of DRAM channels in the system.
+         * Return a the configuration value for the DMA feature
          * @param[in] cfg A configuration initialized from the manycore ROM.
          * @return 1 if DMA is a supported memory system feature, 0 otherwise.
          */
@@ -503,7 +491,7 @@ extern "C" {
         }
 
         /**
-         * Return the number of DRAM channels in the system.
+         * Return a the configuration value for the cache feature of the memory system.
          * @param[in] cfg A configuration initialized from the manycore ROM.
          * @return 1 if cache is a supported memory system feature, 0 otherwise.
          */
@@ -513,9 +501,9 @@ extern "C" {
         }
 
         /**
-         * Return the number of DRAM channels in the system.
+         * Returns an identifier for the memory system type
          * @param[in] cfg A configuration initialized from the manycore ROM.
-         * @return 1 if cache is a supported memory system feature, 0 otherwise.
+         * @return An enum value from hb_mc_memsys_id_t defining the memory type
          */
         static inline hb_mc_memsys_id_t hb_mc_config_memsys_id(const hb_mc_config_t *cfg)
         {

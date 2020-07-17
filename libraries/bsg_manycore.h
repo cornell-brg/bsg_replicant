@@ -47,21 +47,14 @@
 extern "C" {
 #endif
 
-#ifdef COSIM
-        extern void sv_set_virtual_dip_switch(int, int);
-#endif
-
         typedef int hb_mc_manycore_id_t;
 #define HB_MC_MANYCORE_ID_ANY -1
 
         typedef struct hb_mc_manycore {
-                hb_mc_manycore_id_t id; //!< which manycore instance is this
-                const char    *name;     //!< the name of this manycore
-                uintptr_t      mmio;     //!< pointer to memory mapped io
-                hb_mc_config_t config;   //!< configuration of the manycore
-                void    *private_data;   //!< implementation private data
-                unsigned htod_requests;  //!< outstanding host requests
-                int dram_enabled;        //!< operating in no-dram mode?
+                const char *name;      //!< the name of this manycore
+                hb_mc_config_t config; //!< configuration of the manycore
+                void *platform;        //!< machine-specific data pointer
+                int dram_enabled;      //!< operating in no-dram mode?
         } hb_mc_manycore_t;
 
 #define HB_MC_MANYCORE_INIT {0}
@@ -458,73 +451,6 @@ extern "C" {
         __attribute__((warn_unused_result))
         int hb_mc_manycore_flush_vcache(hb_mc_manycore_t *mc);
 
-        /************/
-        /* MMIO API */
-        /************/
-        /**
-         * Read one byte from manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[out] vp     A byte to be set to the data read
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_read8(hb_mc_manycore_t *mc, uintptr_t offset, uint8_t *vp);
-
-        /**
-         * Read a 16-bit half-word from manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[out] vp     A half-word to be set to the data read
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_read16(hb_mc_manycore_t *mc, uintptr_t offset, uint16_t *vp);
-
-        /**
-         * Read a 32-bit word from manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[out] vp     A word to be set to the data read
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_read32(hb_mc_manycore_t *mc, uintptr_t offset, uint32_t *vp);
-
-        /**
-         * Write one byte to manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[in]  v      A byte value to be written out
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_write8(hb_mc_manycore_t *mc, uintptr_t offset, uint8_t v);
-
-        /**
-         * Write a 16-bit half-word to manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[in]  v      A half-word value to be written out
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_write16(hb_mc_manycore_t *mc, uintptr_t offset, uint16_t v);
-
-        /**
-         * Write a 32-bit word to manycore hardware at a given AXI Address
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  offset An  offset into the manycore's MMIO address space
-         * @param[in]  v      A word value to be written out
-         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
-         */
-        __attribute__((warn_unused_result))
-        int hb_mc_manycore_mmio_write32(hb_mc_manycore_t *mc, uintptr_t offset, uint32_t v);
-
-        /////////////////////////////
-        // Address Translation API //
-        /////////////////////////////
-
         /**
          * Query if we are operating in no DRAM mode.
          * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
@@ -532,8 +458,6 @@ extern "C" {
          */
         static inline int hb_mc_manycore_dram_is_enabled(const hb_mc_manycore_t *mc)
         {
-                // at the moment we set this at compile time
-                // TODO: maybe make this a runtime setting
                 return mc->dram_enabled;
         }
 
@@ -550,15 +474,6 @@ extern "C" {
          * @return One if DRAM is enabled. Zero otherwise.
          */
         int hb_mc_manycore_disable_dram(hb_mc_manycore_t *mc);
-
-
-        /**
-         * Check if NPA is in DRAM.
-         * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @param[in]  npa    A valid hb_mc_npa_t
-         * @return One if the NPA maps to DRAM - Zero otherwise.
-         */
-        int hb_mc_manycore_npa_is_dram(hb_mc_manycore_t *mc, const hb_mc_npa_t *npa);
 
         /**
          * Get the max size of program text.
@@ -582,19 +497,64 @@ extern "C" {
         }
 
         /**
-         * Read the number of remaining available endpoint out credits
+         * Stall until the all requests (and responses to the host) have reached their destination.
          * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @return HB_MC_FAIL if an error occured. Number of remaining endpoint out credits otherwise
+         * @param[in] timeout A timeout counter. Unused - set to -1 to wait forever.
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
          */
-        int hb_mc_manycore_get_endpoint_out_credits(hb_mc_manycore_t *mc);
+        int hb_mc_manycore_host_request_fence(hb_mc_manycore_t *mc, long timeout);
 
         /**
-         * Read the number of remaining credits of host
+         * Get the current cycle counter value of the Manycore Platform
+         *
          * @param[in]  mc     A manycore instance initialized with hb_mc_manycore_init()
-         * @return HB_MC_FAIL if an error occured. Number of remaining credits of host otherwise
+         * @param[out] time   The current counter value.
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
          */
-        int hb_mc_manycore_get_host_request_credits(hb_mc_manycore_t *mc);
+        int hb_mc_manycore_get_cycle(hb_mc_manycore_t *mc, uint64_t *time);
 
+        typedef enum {
+                e_instr_float = 0, //<! Floating Point Instructions
+                e_instr_int = 1, //<! Integer Instructions
+                e_instr_all = 2 //<! All instructions (including branches, jumps, and control flow)
+        } bsg_instr_type_e;
+
+        /**
+         * Get the number of instructions executed for a certain class of instructions
+         * @param[in] mc    A manycore instance initialized with hb_mc_manycore_init()
+         * @param[in] itype An enum defining the class of instructions to query.
+         * @param[out] count The number of instructions executed in the queried class.
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
+         */
+        int hb_mc_manycore_get_icount(hb_mc_manycore_t *mc, bsg_instr_type_e itype, int *count);
+
+        /**
+         * Enable trace file generation (vanilla_operation_trace.csv)
+         * @param[in] mc    A manycore instance initialized with hb_mc_manycore_init()
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
+         */
+        int hb_mc_manycore_trace_enable(hb_mc_manycore_t *mc);
+
+        /**
+         * Disable trace file generation (vanilla_operation_trace.csv)
+         * @param[in] mc    A manycore instance initialized with hb_mc_manycore_init()
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
+         */
+        int hb_mc_manycore_trace_disable(hb_mc_manycore_t *mc);
+
+        /**
+         * Enable log file generation (vanilla.log)
+         * @param[in] mc    A manycore instance initialized with hb_mc_manycore_init()
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
+         */
+        int hb_mc_manycore_log_enable(hb_mc_manycore_t *mc);
+
+        /**
+         * Disable log file generation (vanilla.log)
+         * @param[in] mc    A manycore instance initialized with hb_mc_manycore_init()
+         * @return HB_MC_SUCCESS on success. Otherwise an error code defined in bsg_manycore_errno.h.
+         */
+        int hb_mc_manycore_log_disable(hb_mc_manycore_t *mc);
 
 #ifdef __cplusplus
 }
