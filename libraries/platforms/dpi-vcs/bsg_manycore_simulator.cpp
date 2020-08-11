@@ -1,4 +1,4 @@
-// Copyright (c) 2019, University of Washington All rights reserved.
+// Copyright (c) 2020, University of Washington All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification,
 // are permitted provided that the following conditions are met:
@@ -25,11 +25,39 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef TEST_MANYCORE_COMPILE_H
-#define TEST_MANYCORE_COMPILE_H
-#include <bsg_manycore.h>
-#include <bsg_manycore_mmio.h>
-#include <inttypes.h>
-#include "../cl_manycore_regression.h"
+// This file implements the SimulatorWrapper object, which hides
+// differences in simulators.
 
-#endif
+#include <bsg_manycore_simulator.hpp>
+#include <svdpi.h>
+
+extern "C" {
+        void bsg_dpi_next();
+}
+
+SimulationWrapper::SimulationWrapper(){
+        root = new std::string("manycore_tb_top");
+        std::string mc_dpi = *root + ".mc_dpi";
+        top = svGetScopeFromName(mc_dpi.c_str());
+}
+
+// Does nothing. Turning on/off assertions is only supported in
+// Verilator.
+void SimulationWrapper::assertOn(bool val){
+
+}
+
+std::string SimulationWrapper::getRoot(){
+        return *root;
+}
+
+void SimulationWrapper::eval(){
+        svScope prev;
+        prev = svSetScope(top);
+        bsg_dpi_next();
+        svSetScope(prev);
+}
+
+SimulationWrapper::~SimulationWrapper(){
+        this->top = nullptr;
+}
