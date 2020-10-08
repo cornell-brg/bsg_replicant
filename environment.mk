@@ -38,17 +38,19 @@ ORANGE=\033[0;33m
 RED=\033[0;31m
 NC=\033[0m
 
+ifndef __BSG_ENVIRONMENT_MK
+__BSG_ENVIRONMENT_MK := 1
+
 # Name of this project
 PROJECT = cl_manycore
 
 CL_DIR           := $(shell git rev-parse --show-toplevel)
 HARDWARE_PATH    := $(CL_DIR)/hardware
-REGRESSION_PATH  := $(CL_DIR)/regression
-TESTBENCH_PATH   := $(CL_DIR)/testbenches
 LIBRARIES_PATH   := $(CL_DIR)/libraries
-# BSG_MACHINE_PATH := $(CL_DIR)
+# MACHINES_PATH    := $(CL_DIR)/machines
 # PP: allow customized machines through command line
-BSG_MACHINE_PATH ?= $(CL_DIR)
+MACHINES_PATH    ?= $(CL_DIR)/machines
+EXAMPLES_PATH    := $(CL_DIR)/examples
 
 # Check if we are running inside of the BSG Bladerunner repository by searching
 # for project.mk. If project.mk is found, then we are and we should use
@@ -96,6 +98,15 @@ endif # Matches: ifneq ($(_BSG_MANYCORE_DIR), $(BSG_MANYCORE_DIR))
 endif # Matches: ifdef _BSG_MANYCORE_DIR
 # Undefine the temporary variable to prevent its use
 undefine _BSG_MANYCORE_DIR
+
+# If we're inside bladerunner, check for verilator and define variables
+ifneq ("$(wildcard $(BLADERUNNER_ROOT)/verilator/bin/verilator)","")
+VERILATOR_ROOT = $(BLADERUNNER_ROOT)/verilator
+VERILATOR = $(BLADERUNNER_ROOT)/verilator/bin/verilator
+else
+$(warning $(shell echo -e "$(ORANGE)BSG MAKE WARN: Bladerunner is cloned, but verilator not found.$(NC)"))
+$(warning $(shell echo -e "$(ORANGE)BSG MAKE WARN: Compile verilator in bsg_bladerunner to remove this warning$(NC)"))
+endif
 endif # Matches: ifneq ("$(wildcard $(CL_DIR)/../project.mk)","")
 
 # If BASEJUMP_STL_DIR is not defined at this point, raise an error.
@@ -106,4 +117,16 @@ endif
 # If BSG_MANYCORE_DIR is not defined at this point, raise an error.
 ifndef BSG_MANYCORE_DIR
 $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MANYCORE_DIR environment variable undefined. Defining is not recommended. Are you running from within Bladerunner?$(NC)"))
+endif
+
+# cadenv.mk defines the CAD environment (for BSG people)
+include $(CL_DIR)/cadenv.mk
+
+# machine.mk defines BSG_MACHINE_PATH, which is the path to the target machine
+include $(CL_DIR)/machine.mk
+
+# platform.mk defines BSG_PLATFORM_PATH, which is the host platform to
+# simulate (VCS or Verilator) or run on (AWS)
+include $(CL_DIR)/platform.mk
+
 endif

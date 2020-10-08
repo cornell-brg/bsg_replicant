@@ -25,6 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Set the correct platform for compliation
+BSG_PLATFORM=aws-fpga
+
 # This Makefile is for building FPGA Design Checkpoints to upload to AWS
 #
 # environment.mk verifies the build environment and sets the following
@@ -38,6 +41,10 @@
 # CL_DIR: Path to the directory of this AWS F1 Project
 # PROJECT: The name of this project
 include ../environment.mk
+
+# Set the machine path so that we don't try to compile an
+# unsynthesizable machine.
+BSG_MACHINE_PATH := $(MACHINE_DIR)/4x4_blocking_vcache_f1_model
 
 # The following variables are set by $(CL_DIR)/hdk.mk, which will fail if
 # hdk_setup.sh has not been run, or environment.mk is not included
@@ -59,14 +66,13 @@ include $(HARDWARE_PATH)/hardware.mk
 # configured correctly. environment.mk must be included before this line
 include $(CL_DIR)/cadenv.mk
 
-# Replace any xilinx-unsynthesizable sources with xilinx-synthesizable sources
-BUILD_SOURCES := $(filter-out $(BASEJUMP_STL_DIR)/bsg_mem/bsg_mem_1rw_sync_mask_write_bit.v,$(VHEADERS) $(VSOURCES)) 
-BUILD_SOURCES += $(BASEJUMP_STL_DIR)/hard/ultrascale_plus/bsg_mem/bsg_mem_1rw_sync_mask_write_bit.v
+VHEADERS += $(BSG_MANYCORE_DIR)/imports/HardFloat/source/HardFloat_consts.vi
+VHEADERS += $(BSG_MANYCORE_DIR)/imports/HardFloat/source/HardFloat_localFuncs.vi
+VHEADERS += $(BSG_MANYCORE_DIR)/imports/HardFloat/source/RISCV/HardFloat_specialize.vi
+SOURCES = $(addprefix src_post_encryption/, $(notdir $(VHEADERS) $(VSOURCES)))
 
-SOURCES = $(addprefix src_post_encryption/, $(notdir $(BUILD_SOURCES)))
-
-$(SOURCES): src_post_encryption $(BUILD_SOURCES)
-	@cp $(filter %/$(notdir $@), $(BUILD_SOURCES)) $@
+$(SOURCES): src_post_encryption $(VHEADERS) $(VSOURCES)
+	@cp $(filter %/$(notdir $@), $(VHEADERS) $(VSOURCES)) $@
 
 src_post_encryption:
 	mkdir $@

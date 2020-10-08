@@ -92,6 +92,8 @@ extern "C" {
                 hb_mc_dimension_t dim;
                 hb_mc_eva_map_t *map;
                 hb_mc_kernel_t *kernel;
+                uint32_t argc;
+                hb_mc_eva_t argv_eva;
         } hb_mc_tile_group_t;
 
 
@@ -235,7 +237,7 @@ extern "C" {
          * @parma[in]  src           EVA address of source to be copied from
          * @parma[in]  dst           EVA address of destination to be copied into
          * @param[in]  name          EVA address of dst
-         * @param[in]  count         Size of buffer (number of words) to be copied
+         * @param[in]  count         Size of buffer (number of bytes) to be copied
          * @param[in]  hb_mc_memcpy_kind         Direction of copy (HB_MC_MEMCPY_TO_DEVICE / HB_MC_MEMCPY_TO_HOST)
          * @return HB_MC_SUCCESS if succesful. Otherwise an error code is returned.
          */
@@ -247,7 +249,33 @@ extern "C" {
                                  enum hb_mc_memcpy_kind kind);
 
 
+        /**
+         * Copies a buffer from src on the host/device DRAM to dst on device DRAM/host.
+         * @param[in]  device        Pointer to device
+         * @parma[in]  daddr         EVA address of destination to be copied into
+         * @parma[in]  haddr         Host address of source to be copied from
+         * @param[in]  bytes         Size of buffer to be copied
+         * @return HB_MC_SUCCESS if succesful. Otherwise an error code is returned.
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_memcpy_to_device(hb_mc_device_t *device,
+                                          hb_mc_eva_t daddr,
+                                          const void *haddr,
+                                          uint32_t bytes);
 
+        /**
+         * Copies a buffer from src on the host/device DRAM to dst on device DRAM/host.
+         * @param[in]  device        Pointer to device
+         * @parma[in]  haddr         Host address of source to be copied into
+         * @parma[in]  daddr         EVA address of destination to be copied from
+         * @param[in]  bytes         Size of buffer to be copied
+         * @return HB_MC_SUCCESS if succesful. Otherwise an error code is returned.
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_memcpy_to_host(hb_mc_device_t *device,
+                                        void       *haddr,
+                                        hb_mc_eva_t daddr,
+                                        uint32_t bytes);
 
 
         /**
@@ -331,7 +359,58 @@ extern "C" {
 
 
 
+        /***********/
+        /* DMA API */
+        /***********/
+        typedef struct {
+                hb_mc_eva_t d_addr; //!< Target EVA on the manycore
+                const void* h_addr; //!< Target address on the host
+                size_t      size;   //!< Size in bytes of the buffer to be copied
+        } hb_mc_dma_htod_t;
 
+        typedef struct {
+                hb_mc_eva_t d_addr; //!< Target EVA on the manycore
+                void*       h_addr; //!< Target address on the host
+                size_t      size;   //!< Size in bytes of the buffer to be copied
+        } hb_mc_dma_dtoh_t;
+
+        /**
+         * Copy data using DMA from the host to the device.
+         * @param[in] device  Pointer to device
+         * @param[in] jobs    Vector of host-to-device DMA jobs
+         * @param[in] count   Number of host-to-device jobs
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_dma_to_device(hb_mc_device_t *device, const hb_mc_dma_htod_t *jobs, size_t count);
+
+        /**
+         * Copy data using DMA from the host to the device.
+         * @param[in] device  Pointer to device
+         * @param[in] jobs    Vector of device-to-host DMA jobs
+         * @param[in] count   Number of device-to-host jobs
+         */
+        __attribute__((warn_unused_result))
+        int hb_mc_device_dma_to_host(hb_mc_device_t *device, const hb_mc_dma_dtoh_t *jobs, size_t count);
+
+        /**
+         * Convenience macro for calling a CUDA function and handling an error return code.
+         * @param[in] stmt  A C/C++ statement that evaluates to an integer return code.
+         *
+         * Example:
+         * CUDA_CALL(hb_mc_device_malloc(&device, ...));
+         *
+         * The return code must be an integer defined in bsg_manycore_errno.h - otherwise behavior is undefined.
+         * This macro will cause the invoking to return if an error code is returned.
+         * An error message will be printing with the code statement that failed.
+         */
+#define BSG_CUDA_CALL(stmt)                                             \
+        {                                                               \
+                int __r = stmt;                                         \
+                if (__r != HB_MC_SUCCESS) {                             \
+                        bsg_pr_err("'%s' failed: %s\n", #stmt, hb_mc_strerror(__r)); \
+                        return __r;                                     \
+                }                                                       \
+        }
 
 #ifdef __cplusplus
 }

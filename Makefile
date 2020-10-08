@@ -32,15 +32,15 @@
 # environment.mk verifies the build environment and sets the following
 # makefile variables:
 #
-# TESTBENCH_PATH: The path to the testbench directory in the bsg_f1 repository
-# LIBRAIRES_PATH: The path to the libraries directory in the bsg_f1 repository
-# HARDARE_PATH: The path to the hardware directory in the bsg_f1 repository
+# LIBRAIRES_PATH: The path to the libraries directory
+# HARDWARE_PATH: The path to the hardware directory
+# EXAMPLES_PATH: The path to the examples directory
 # BASEJUMP_STL_DIR: Path to a clone of BaseJump STL
 # BSG_MANYCORE_DIR: Path to a clone of BSG Manycore
 # CL_DIR: Path to the directory of this AWS F1 Project
 include environment.mk
 
-.PHONY: help build regression cosim clean
+.PHONY: help build clean
 
 .DEFAULT_GOAL := help
 help:
@@ -50,36 +50,34 @@ help:
 	@echo "             upload to AWS."
 	@echo "      regression: Runs all software regression tests on F1"
 	@echo "      cosim: Runs all regression tests in C/C++ Co-simulation"
+	@echo "             on the machine specified by machine.mk"
+	@echo "      multiverse: Runs all regression tests on all machines"
+	@echo "             and copies the resulting regression.log to the"
+	@echo "             corresponding directory in machines"
+	@echo "             (multiverse takes a good long while)"
 	@echo "      clean: Remove all build files"
 
 build:
-	$(MAKE) -C $@ $@
+	$(MAKE) -C $@ $@ BSG_MACHINE_PATH=$(MACHINES_PATH)/4x4_blocking_vcache_f1_model BSG_PLATFORM=aws-fpga
 
 regression:
-	$(MAKE) -C regression $@ 
+	$(MAKE) -C examples $@ 
 
-# The following variables control different behaviors in C/C++
-# Co-simulation. These can be set from the command line, e.g: `make
-# cosim DEBUG=1`. They are passed as variables to the Makefile in the
-# testbenches directory.
-
-# DEBUG=1 Opens the Waveform GUI during simulation
-
-# TURBO=1 increases simulation speed, but disables waveform generation
-
-# EXTRA_TURBO=1 further increases simulation speed, but may affect
-# correctness.
-DEBUG ?=
-TURBO ?= 1 
-EXTRA_TURBO ?= 0
-
-cosim: 
-	$(MAKE) -C testbenches regression EXTRA_TURBO=$(EXTRA_TURBO)	\
-		DEBUG=$(DEBUG) TURBO=$(TURBO)
+__BSG_MACHINES += machines/16x8_fast_n_fake
+__BSG_MACHINES += machines/4x4_fast_n_fake
+__BSG_MACHINES += machines/4x4_blocking_dramsim3_hbm2_512mb
+__BSG_MACHINES += machines/8x4_blocking_dramsim3_hbm2_4gb
+__BSG_MACHINES += machines/4x4_blocking_vcache_f1_model
+__BSG_MACHINES += machines/timing_v0_8_4
+__BSG_MACHINES += machines/timing_v0_16_8
+#__BSG_MACHINES += machines/timing_v0_32_16
+#__BSG_MACHINES += machines/timing_v0_64_32  
+multiverse:
+	$(foreach m,$(__BSG_MACHINES),$(MAKE) -k -C examples regression BSG_MACHINE_PATH=`pwd`/$m &&) echo ;
 
 clean:
-	$(MAKE) -C testbenches clean 
+	$(MAKE) -C examples clean 
 	$(MAKE) -C build clean 
-	$(MAKE) -C regression clean
 	$(MAKE) -C hardware clean 
+	$(MAKE) -C libraries clean
 
