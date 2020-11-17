@@ -38,8 +38,10 @@
 
 #ifdef __cplusplus
 #include <cstring>
+#include <cassert>
 #else
 #include <string.h>
+#include <assert.h>
 #endif
 
 
@@ -104,6 +106,12 @@ static int hb_mc_tile_group_exit (hb_mc_tile_group_t *tg);
 
 __attribute__((warn_unused_result))
 static int hb_mc_tile_group_kernel_exit (hb_mc_kernel_t *kernel); 
+
+__attribute__((warn_unused_result))
+static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len);
+
+__attribute__((warn_unused_result))
+static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coordinate_t *lst);
 
 __attribute__((warn_unused_result))
 static int hb_mc_device_program_load (hb_mc_device_t *device);
@@ -1024,6 +1032,69 @@ int hb_mc_device_init_custom_dimensions (hb_mc_device_t *device,
 
 
 
+static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
+        // PP: HACK! i have to manually remove the xcel tiles from the tile list
+        // because the xcel is not supposed to handle tile freeze, loading
+        // instructions into the SRAM, etc. Assume the bottom row is dedicated to
+        // accelerators...
+        hb_mc_dimension_t dim = device->mesh->dim;
+
+#ifdef VVADD_XCEL
+        // PP: this is to exclude the bottom row (used by vvadd xcels)
+        *len = hb_mc_dimension_to_length(dim) - hb_mc_dimension_get_x(dim);
+#elif VVADD_TOPLEVEL_XCEL
+        // PP: this is to exclude the first and last column from the tile list
+        /* *len = hb_mc_dimension_to_length(dim) - 2*hb_mc_dimension_get_y(dim); */
+        *len = hb_mc_dimension_to_length(dim);
+#else
+        // PP: fall back to vanilla manycore
+        *len = hb_mc_dimension_to_length(dim);
+#endif
+
+        return HB_MC_SUCCESS;
+}
+
+
+static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coordinate_t *lst) {
+/* #ifdef VVADD_TOPLEVEL_XCEL */
+#ifdef VVADD_TOPLEVEL_XCEL_UNUSED
+        hb_mc_dimension_t dim = device->mesh->dim;
+        int dim_x    = hb_mc_dimension_get_x(dim);
+        int dim_y    = hb_mc_dimension_get_y(dim);
+        int tile_cnt = 0;
+
+        bsg_pr_dbg("%s: dim.y = %d, dim.x = %d\n", __func__, dim_y, dim_x);
+
+        // PP: this is to exclude the first and last columns
+        for (int y = 0; y < dim_y; y++)
+          for (int x = 0; x < dim_x; x++) {
+            if (x == 0 || x == (dim_x-1))
+              continue;
+
+            int tile_id = y*dim_x+x;
+
+            bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n",
+                __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x);
+
+            lst[tile_cnt] = device->mesh->tiles[tile_id].coord;
+            tile_cnt++;
+          }
+        assert(tile_cnt == len);
+#else
+        // PP: vvadd xcel or vanilla manycore
+        for (int tile_id = 0; tile_id < len; tile_id ++) {
+
+            bsg_pr_dbg("%s: tid = %d\n", __func__, tile_id);
+            bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n",
+                __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x);
+
+            lst[tile_id] = device->mesh->tiles[tile_id].coord;
+        }
+#endif
+        return HB_MC_SUCCESS;
+}
+
+
 
 /**
  * Loads the binary in a device's hb_mc_program_t struct
@@ -1033,22 +1104,28 @@ int hb_mc_device_init_custom_dimensions (hb_mc_device_t *device,
  */
 static int hb_mc_device_program_load (hb_mc_device_t *device) { 
         int error; 
-        printf("[bsg_manycore_cuda.cpp] Inside hb_mc_device_program_load()\n");
 
         // Create list of tile coordinates 
-        // PP: HACK! i have to manually remove the xcel tiles from the tile list
-        // because the xcel is not supposed to handle tile freeze, loading
-        // instructions into the SRAM, etc.
-        /* uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim); */
-        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim) - 4;
+
+        uint32_t num_tiles;
+
+        hb_mc_get_tile_list_len(device, &num_tiles);
+
+        // Use VLA so that we don't have to free it manually
         hb_mc_coordinate_t tile_list[num_tiles];
-        printf("[bsg_manycore_cuda.cpp] Hack to prevent xcels from freezing!\n");
-        printf("[bsg_manycore_cuda.cpp] Num tiles = %d\n", num_tiles);
+
+        hb_mc_get_tile_list(device, num_tiles, tile_list);
+
+        // Display tile list info
+        bsg_pr_dbg("%s: Hack to prevent xcels from freezing!\n", __func__);
+        bsg_pr_dbg("%s: Num tiles = %d\n", __func__, num_tiles);
+
         for (int tile_id = 0; tile_id < num_tiles; tile_id ++) {
-                tile_list[tile_id] = device->mesh->tiles[tile_id].coord;
-                printf("[bsg_manycore_cuda.cpp] tile_list[%d] = (y = %d, x = %d)\n", 
-                    tile_id, tile_list[tile_id].y, tile_list[tile_id].x);
+                bsg_pr_dbg("%s: tile_list[%d] = (y = %d, x = %d)\n", 
+                    __func__, tile_id, tile_list[tile_id].y, tile_list[tile_id].x);
         }
+
+        bsg_pr_dbg("%s: Start to freeze all tiles...\n", __func__);
 
         // Freeze tiles
         error = hb_mc_device_tiles_freeze(device, tile_list, num_tiles);
@@ -1057,6 +1134,9 @@ static int hb_mc_device_program_load (hb_mc_device_t *device) {
                 return error;
         }
 
+        bsg_pr_dbg("%s: All tiles frozen!\n", __func__);
+
+        bsg_pr_dbg("%s: Loading binary to all tiles...\n", __func__);
 
         // Load binary into all tiles 
         error = hb_mc_loader_load (device->program->bin,
@@ -1070,6 +1150,9 @@ static int hb_mc_device_program_load (hb_mc_device_t *device) {
                 return error;
         }       
 
+        bsg_pr_dbg("%s: Binary loaded to all tiles!\n", __func__);
+
+        bsg_pr_dbg("%s: Setting all tile configurations...\n", __func__);
 
         // Set all tiles configuration symbols 
         hb_mc_coordinate_t tg_id = hb_mc_coordinate (0, 0);
@@ -1084,6 +1167,9 @@ static int hb_mc_device_program_load (hb_mc_device_t *device) {
                                                       grid_dim,
                                                       tile_list,
                                                       num_tiles);
+
+        bsg_pr_dbg("%s: All tile configurations set!\n", __func__);
+
         if (error != HB_MC_SUCCESS) { 
                 bsg_pr_err("%s: failed to set tiles configuration symbols.\n", __func__);
                 return error;
@@ -1563,20 +1649,21 @@ int hb_mc_device_finish (hb_mc_device_t *device) {
 
         int error;
 
-
-        // PP: HACK! i have to manually remove the xcel tiles from the tile list
-        // because the xcel is not supposed to handle tile freeze, loading
-        // instructions into the SRAM, etc.
-
         // Create list of tile coordinates 
-        /* uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim); */
-        uint32_t num_tiles = hb_mc_dimension_to_length (device->mesh->dim) - 4;
+
+        uint32_t num_tiles;
+
+        hb_mc_get_tile_list_len(device, &num_tiles);
+
+        // Use VLA so that we don't have to free it manually
+        hb_mc_coordinate_t tile_list[num_tiles];
+
+        hb_mc_get_tile_list(device, num_tiles, tile_list);
+
         printf("[bsg_manycore_cuda.cpp] Hack to prevent xcels from freezing!\n");
         printf("[bsg_manycore_cuda.cpp] Num tiles = %d\n", num_tiles);
-        hb_mc_coordinate_t tile_list[num_tiles];
         for (int tile_id = 0; tile_id < num_tiles; tile_id ++) {
-                tile_list[tile_id] = device->mesh->tiles[tile_id].coord;
-                printf("[bsg_manycore_cuda.cpp] tile_list[%d] = (y = %d, x = %d)\n", 
+                printf("[bsg_manycore_cuda.cpp] tile_list[%d] = (y = %d, x = %d)\n",
                     tile_id, tile_list[tile_id].y, tile_list[tile_id].x);
         }
 

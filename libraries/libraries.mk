@@ -85,7 +85,13 @@ LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_print_int_responder.o
 LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_memsys.o
 
 # Objects that should be compiled with debug flags
-LIB_DEBUG_OBJECTS  +=
+# PP: enable debug printing
+# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_printing.o
+# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore.o
+LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_cuda.o
+# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_loader.o
+# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_eva.o
+# LIB_DEBUG_OBJECTS  +=
 
 LIB_OBJECTS += $(patsubst %cpp,%o,$(LIB_CXXSOURCES))
 LIB_OBJECTS += $(patsubst %c,%o,$(LIB_CSOURCES))
@@ -102,8 +108,8 @@ $(LIB_OBJECTS): INCLUDES += -I$(LIBRARIES_PATH)/features/dma
 $(LIB_OBJECTS): INCLUDES += -I$(LIBRARIES_PATH)/features/profiler
 # We should move this from AWS (and keep the license)
 $(LIB_OBJECTS): INCLUDES += -I$(AWS_FPGA_REPO_DIR)/SDAccel/userspace/include
-$(LIB_OBJECTS): CFLAGS   := -std=c11 -fPIC -D_GNU_SOURCE $(INCLUDES)
-$(LIB_OBJECTS): CXXFLAGS := -std=c++11 -fPIC -D_GNU_SOURCE $(INCLUDES)
+$(LIB_OBJECTS): CFLAGS   := -std=c11 -fPIC -D_GNU_SOURCE $(LIB_DEFINES) $(INCLUDES)
+$(LIB_OBJECTS): CXXFLAGS := -std=c++11 -fPIC -D_GNU_SOURCE $(LIB_DEFINES) $(INCLUDES)
 # Need to move this, eventually
 #$(LIB_OBJECTS) $(PLATFORM_OBJECTS): $(BSG_MACHINE_PATH)/bsg_manycore_machine.h
 

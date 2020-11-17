@@ -29,6 +29,11 @@
 
 #define ALLOC_NAME "default_allocator"
 
+/* #define NUM_VEC_ADD_XCEL    16 */
+#define NUM_VEC_ADD_XCEL    1
+#define VEC_ADD_XCEL_Y_CORD 9
+#define ELEM_PER_VEC_XCEL   8
+
 /*!
  * Runs the vector addition a one 1x1 tile group. A[N] + B[N] --> C[N]
  * Grid dimensions are prefixed at 1x1.
@@ -54,7 +59,7 @@ int kernel_vec_add_xcel (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the CUDA Vector Addition Xcel Kernel on one 4x3 tile groups.\n\n");
+        bsg_pr_test_info("Running the CUDA Vector Addition Xcel Kernel on one 8x16 manycore.\n\n");
 
         srand(time); 
 
@@ -80,8 +85,7 @@ int kernel_vec_add_xcel (int argc, char **argv) {
         * Allocate memory on the device for A, B and C.
         ******************************************************************************************************************/
 
-        /* uint32_t N = 1024; */
-        uint32_t N = 8;
+        uint32_t N = ELEM_PER_VEC_XCEL * NUM_VEC_ADD_XCEL;
         bsg_pr_test_info("Allocating memory for ABC\n");
 
         eva_t A_device, B_device, C_device; 
@@ -160,7 +164,7 @@ int kernel_vec_add_xcel (int argc, char **argv) {
         * Prepare list of input arguments for kernel.
         ******************************************************************************************************************/
 
-        int cuda_argv[4] = {A_device, B_device, C_device, N};
+        int cuda_argv[5] = {A_device, B_device, C_device, N, ELEM_PER_VEC_XCEL};
 
         /*****************************************************************************************************************
         * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
@@ -168,7 +172,7 @@ int kernel_vec_add_xcel (int argc, char **argv) {
 
         bsg_pr_test_info("Enqueuing kernel to HB\n");
 
-        rc = hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_vec_add_xcel", 4, cuda_argv);
+        rc = hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_vec_add_xcel", 5, cuda_argv);
         if (rc != HB_MC_SUCCESS) { 
                 bsg_pr_err("failed to initialize grid.\n");
                 return rc;
@@ -235,33 +239,13 @@ int kernel_vec_add_xcel (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-#ifdef COSIM
-void cosim_main(uint32_t *exit_code, char * args) {
-        // We aren't passed command line arguments directly so we parse them
-        // from *args. args is a string from VCS - to pass a string of arguments
-        // to args, pass c_args to VCS as follows: +c_args="<space separated
-        // list of args>"
-        int argc = get_argc(args);
-        char *argv[argc];
-        get_argv(args, argc, argv);
-
 #ifdef VCS
-        svScope scope;
-        scope = svGetScopeFromName("tb");
-        svSetScope(scope);
-#endif
-        bsg_pr_test_info("test_vec_add_xcel Regression Test (COSIMULATION)\n");
-        int rc = kernel_vec_add_xcel(argc, argv);
-        *exit_code = rc;
-        bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
-        return;
-}
+int vcs_main(int argc, char ** argv) {
 #else
 int main(int argc, char ** argv) {
-        bsg_pr_test_info("test_vec_add_xcel Regression Test (F1)\n");
+#endif
+        bsg_pr_test_info("test_vec_add_xcel Regression Test\n");
         int rc = kernel_vec_add_xcel(argc, argv);
         bsg_pr_test_pass_fail(rc == HB_MC_SUCCESS);
         return rc;
 }
-#endif
-

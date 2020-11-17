@@ -298,6 +298,7 @@ int hb_mc_platform_transmit(hb_mc_manycore_t *mc,
         }
 
 
+        /* printf("[-debug-] Before attempting platform transmit\n"); */
         do {
                 top->eval();
                 err = platform->dpi->tx_req(*pkt);
@@ -305,6 +306,7 @@ int hb_mc_platform_transmit(hb_mc_manycore_t *mc,
                  (err == BSG_NONSYNTH_DPI_NO_CREDITS || 
                   err == BSG_NONSYNTH_DPI_NOT_WINDOW ||
                   err == BSG_NONSYNTH_DPI_NOT_READY    ));
+        /* printf("[-debug-] After attempting platform transmit\n"); */
 
         if(err != BSG_NONSYNTH_DPI_SUCCESS){
                 manycore_pr_err(mc, "%s: Failed to transmit packet: %s\n",

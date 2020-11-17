@@ -106,6 +106,9 @@ INDEPENDENT_TESTS += test_vec_add_xcel
 # PP: add the CGRA accelerator test
 INDEPENDENT_TESTS += test_cgra_xcel
 
+# PP: add the toplevel vvadd xcel test
+INDEPENDENT_TESTS += test_vec_add_toplevel_xcel
+
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 
@@ -113,6 +116,15 @@ REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 # Host code compilation flags and flow
 ###############################################################################
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
+
+# PP: I have to check $MAKECMDGOALS to define custom toplevel symbols
+ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_xcel)
+	DEFINES     += -DVVADD_XCEL
+	LIB_DEFINES =  -DVVADD_XCEL
+else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_toplevel_xcel)
+	DEFINES     += -DVVADD_TOPLEVEL_XCEL
+	LIB_DEFINES =  -DVVADD_TOPLEVEL_XCEL
+endif
 
 CDEFINES   += $(DEFINES)
 CXXDEFINES += $(DEFINES)

@@ -285,8 +285,15 @@ static bool default_eva_is_dram(const hb_mc_eva_t *eva)
 
 static uint32_t default_get_dram_max_x_coord(const hb_mc_config_t *cfg)
 {
+#ifdef VVADD_TOPLEVEL_XCEL
+        // vcache/DRAM x cords: 1 ~ 16 (for dim.x == 16)
         hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
         return hb_mc_dimension_get_x(dim);
+#else
+        // vcache/DRAM x cords: 0 ~ 15 (for dim.x == 16)
+        hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
+        return hb_mc_dimension_get_x(dim)-1;
+#endif
 }
 
 static uint32_t default_get_x_dimlog(const hb_mc_config_t *cfg)
@@ -340,7 +347,13 @@ static int default_eva_get_x_coord_dram(const hb_mc_manycore_t *mc,
         uint32_t xmask = default_get_dram_x_bitidx(cfg);
         uint32_t dram_max_x_coord = default_get_dram_max_x_coord(cfg);
 
+#ifdef VVADD_TOPLEVEL_XCEL
+        // vcache/DRAM xcords: 1~16
+        bsg_pr_dbg("%s: striple_log = %u, xmask = %u\n", __func__, stripe_log, xmask);
+        *x = ((hb_mc_eva_addr(eva) >> stripe_log) & xmask) + 1;
+#else
         *x = (hb_mc_eva_addr(eva) >> stripe_log) & xmask;
+#endif
         if ( *x > dram_max_x_coord) { 
                 bsg_pr_err("%s: Translation of EVA 0x%08" PRIx32 " failed. The X coordinate "
                            "of the DRAM bank for the requested EPA %d is larger than max %d\n.",
@@ -1231,7 +1244,7 @@ int hb_mc_manycore_eva_memset(hb_mc_manycore_t *mc,
 
 
                 char npa_str[256];
-                bsg_pr_dbg("read %zd bytes from eva %08x (%s)\n",
+                bsg_pr_dbg("writing %zd bytes to eva %08x (%s)\n",
                            xfer_sz,
                            curr_eva,
                            hb_mc_npa_to_string(&dest_npa, npa_str, sizeof(npa_str)));

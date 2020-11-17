@@ -63,6 +63,11 @@ endif
 include $(BSG_MACHINE_PATH)/Makefile.machine.include
 CL_MANYCORE_MAX_EPA_WIDTH            := $(BSG_MACHINE_MAX_EPA_WIDTH)
 CL_MANYCORE_DATA_WIDTH               := $(BSG_MACHINE_DATA_WIDTH)
+ifdef BSG_MACHINE_NUM_CACHES
+CL_MANYCORE_NUM_CACHES               := $(BSG_MACHINE_NUM_CACHES)
+else
+CL_MANYCORE_NUM_CACHES               := $(shell echo $(CL_MANYCORE_DIM_X)*2 | bc)
+endif
 CL_MANYCORE_VCACHE_WAYS              := $(BSG_MACHINE_VCACHE_WAY)
 CL_MANYCORE_VCACHE_SETS              := $(BSG_MACHINE_VCACHE_SET)
 CL_MANYCORE_VCACHE_BLOCK_SIZE_WORDS  := $(BSG_MACHINE_VCACHE_BLOCK_SIZE_WORDS)
@@ -201,6 +206,8 @@ $(BSG_MACHINE_PATH)/bsg_manycore_machine.h: $(BSG_MACHINE_PATH)/Makefile.machine
 	@echo "#define BSG_MANYCORE_MACHINE_HOST_COORD_Y  \\" >> $@.temp
 	@echo "    $(CL_MANYCORE_HOST_COORD_Y)"  >> $@.temp
 	@echo "/* L2 cache parameters */"         >> $@.temp
+	@echo "#define BSG_MANYCORE_MACHINE_NUM_CACHES   \\" >> $@.temp
+	@echo "    $(CL_MANYCORE_NUM_CACHES)"   >> $@.temp
 	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_WAYS   \\" >> $@.temp
 	@echo "    $(CL_MANYCORE_VCACHE_WAYS)"   >> $@.temp
 	@echo "#define BSG_MANYCORE_MACHINE_VCACHE_BANK_SETS   \\" >> $@.temp
@@ -234,7 +241,9 @@ $(BSG_MACHINE_PATH)/f1_parameters.vh: $(BSG_MACHINE_PATH)/Makefile.machine.inclu
 	@echo "\`define CL_MANYCORE_VCACHE_MISS_FIFO_ELS $(CL_MANYCORE_VCACHE_MISS_FIFO_ELS)" >> $@
 	@echo "\`define CL_MANYCORE_MEM_CFG $(CL_MANYCORE_MEM_CFG)" >> $@
 	@echo "\`define CL_MANYCORE_BRANCH_TRACE_EN $(CL_MANYCORE_BRANCH_TRACE_EN)" >> $@
-	@echo "\`define CL_MANYCORE_HETERO_TYPE_VEC $(CL_MANYCORE_HETERO_TYPE_VEC)" >> $@
+	@$(if $(strip $(CL_MANYCORE_HETERO_TYPE_VEC)), echo "\`define CL_MANYCORE_HETERO_TYPE_VEC $(CL_MANYCORE_HETERO_TYPE_VEC)" >> $@)
+	@$(if $(strip $(CL_MANYCORE_MC_COMPOSITION)), echo "\`define CL_MANYCORE_MC_COMPOSITION $(CL_MANYCORE_MC_COMPOSITION)" >> $@)
+	@echo "\`define CL_MANYCORE_NUM_CACHES $(CL_MANYCORE_NUM_CACHES)" >> $@
 	@echo "\`define CL_MANYCORE_IO_EP_MAX_OUT_CREDITS $(CL_MANYCORE_IO_EP_MAX_OUT_CREDITS)" >> $@
 	@echo "\`define CL_MANYCORE_IO_PKTS_CAP $(CL_MANYCORE_IO_PKTS_CAP)" >> $@
 	@echo "\`define CL_MANYCORE_DRAM_CHANNELS $(CL_MANYCORE_DRAM_CHANNELS)" >> $@

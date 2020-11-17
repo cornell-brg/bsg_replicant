@@ -84,7 +84,11 @@ int hb_mc_profiler_init(hb_mc_profiler_t *p, hb_mc_idx_t x, hb_mc_idx_t y, strin
                 for(int ix = 0; ix < x; ++ix){
                         ostringstream stream;
                         stream << hier << ".y[" << iy << "]" << ".x[" << ix << "]" << tail;
-                        profilers->push_back(new dpi_vanilla_core_profiler(stream.str()));
+
+                        // PP: If we cannot get scope from the string, it could be a
+                        // custom xcel module. Do not add to profilers in that case.
+                        if(svGetScopeFromName(stream.str().c_str()))
+                          profilers->push_back(new dpi_vanilla_core_profiler(stream.str()));
                 }
         }
         

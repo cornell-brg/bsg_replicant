@@ -112,6 +112,10 @@ int hb_mc_config_init(const hb_mc_config_raw_t raw[HB_MC_CONFIG_MAX],
         xdim_max = (1 << xlogsz_max);
 
         idx = raw[HB_MC_CONFIG_DEVICE_DIM_X];
+#ifdef VVADD_TOPLEVEL_XCEL
+        // PP: if this is a custom top level, exclude the first and last columns
+        idx -= 2;
+#endif
         //Temporarily removed this condition until it is cleared up. TODO: Fix.
         //if ((idx < HB_MC_COORDINATE_MIN) || (idx > xdim_max)){
         if ((idx < HB_MC_COORDINATE_MIN)){

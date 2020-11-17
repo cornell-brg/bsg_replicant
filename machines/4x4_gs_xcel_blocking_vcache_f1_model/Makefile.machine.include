@@ -52,9 +52,9 @@ CL_MANYCORE_DIM_Y                    := $(shell expr $(BSG_MACHINE_GLOBAL_Y) - 1
 CL_MANYCORE_MEM_CFG                  := e_vcache_blocking_axi4_f1_model
 
 # Instantiate a row of gather-scatter accelerators in the bottom row
-CL_MANYCORE_HETERO_TYPE_VEC          := {0, 0, 0, 0}, \
-																				{0, 0, 0, 0}, \
-																				{1, 1, 1, 1}
+CL_MANYCORE_HETERO_TYPE_VEC          := 0,0,0,0,\
+																				0,0,0,0,\
+																				1,1,1,1
 
 # Define BSG_MACHINE_NAME using the Y and X dimensions, and CL_MANYCORE_MEM_CFG
 BSG_MACHINE_NAME                      =Y$(BSG_MACHINE_GLOBAL_Y)X$(BSG_MACHINE_GLOBAL_X)

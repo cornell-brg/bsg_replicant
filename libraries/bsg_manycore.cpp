@@ -152,14 +152,14 @@ int  hb_mc_manycore_init(hb_mc_manycore_t *mc, const char *name, hb_mc_manycore_
                 return r;
         }
 
-        printf("[bsg_manycore.cpp] Before hb_mc_platform_init()\n");
+        bsg_pr_dbg("%s: Before hb_mc_platform_init()\n", __func__);
         // Initialize the underlying machine
         if ((err = hb_mc_platform_init(mc, id)) != HB_MC_SUCCESS){
                 free((void*)mc->name);
                 return err;
         }
 
-        printf("[bsg_manycore.cpp] Before hb_mc_manycore_init_config()\n");
+        bsg_pr_dbg("%s: Before hb_mc_manycore_init_config()\n", __func__);
         // read configuration
         if ((err = hb_mc_manycore_init_config(mc)) != HB_MC_SUCCESS){
                 free((void*)mc->name);
@@ -167,7 +167,7 @@ int  hb_mc_manycore_init(hb_mc_manycore_t *mc, const char *name, hb_mc_manycore_
                 return err;
         }
 
-        printf("[bsg_manycore.cpp] Before hb_mc_responders_init()\n");
+        bsg_pr_dbg("%s: Before hb_mc_responders_init()\n", __func__);
         // initialize responders
         if ((err = hb_mc_responders_init(mc))){
                 hb_mc_platform_cleanup(mc);
@@ -175,15 +175,16 @@ int  hb_mc_manycore_init(hb_mc_manycore_t *mc, const char *name, hb_mc_manycore_
                 return err;
         }
 
-        printf("[bsg_manycore.cpp] Before hb_mc_manycore_enable_dram()\n");
+        bsg_pr_dbg("%s: Before hb_mc_manycore_enable_dram()\n", __func__);
         // enable dram
         if ((err = hb_mc_manycore_enable_dram(mc)) != HB_MC_SUCCESS){
+                bsg_pr_dbg("%s: Failed hb_mc_manycore_enable_dram()!\n", __func__);
                 hb_mc_platform_cleanup(mc);
                 free((void*)mc->name);
                 return err;
         }
 
-        printf("[bsg_manycore.cpp] hb_mc_manycore_init() succeeds!\n");
+        bsg_pr_dbg("%s: hb_mc_manycore_init() succeeds!\n", __func__);
         return HB_MC_SUCCESS;
 }
 
@@ -350,7 +351,12 @@ static bool hb_mc_manycore_dst_npa_is_valid(hb_mc_manycore_t *mc, const hb_mc_np
         const hb_mc_config_t *cfg = hb_mc_manycore_get_config(mc);
         hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
 
+#ifdef VVADD_TOPLEVEL_XCEL
+        // For custom toplevel the first column is used for xcels
+        if (hb_mc_npa_get_x(npa) > hb_mc_dimension_get_x(dim)) {
+#else
         if (hb_mc_npa_get_x(npa) >= hb_mc_dimension_get_x(dim)) {
+#endif
                 char npa_str[256];
                 manycore_pr_err(mc, "%s: %s is not a valid destination\n",
                                 __func__,
@@ -1248,6 +1254,7 @@ int hb_mc_manycore_enable_dram(hb_mc_manycore_t *mc)
                         hb_mc_idx_t x = col + hb_mc_config_get_vcore_base_x(cfg);
                         hb_mc_idx_t y = row + hb_mc_config_get_vcore_base_y(cfg);
                         hb_mc_coordinate_t tile = hb_mc_coordinate(x,y);
+                        /* printf("[-debug-] x = %d, y = %d\n", x, y); */
                         int err = hb_mc_tile_set_dram_enabled(mc, &tile);
                         if (err != HB_MC_SUCCESS)
                                 return err;

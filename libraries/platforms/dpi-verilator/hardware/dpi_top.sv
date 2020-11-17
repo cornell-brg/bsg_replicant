@@ -54,6 +54,8 @@ module manycore_tb_top
    // TODO: (Future) Host coordinate should be a parameter
    logic [x_cord_width_p-1:0] host_x_cord_li = (x_cord_width_p)'(0);
    logic [y_cord_width_p-1:0] host_y_cord_li = (y_cord_width_p)'(1);
+   /* localparam [x_cord_width_p-1:0] host_x_cord_li = (mc_composition_p == e_manycore_vec_xcel) ? 1 : 0; */
+   /* localparam [y_cord_width_p-1:0] host_y_cord_li = (y_cord_width_p)'(1); */
 
    logic [num_cache_p-1:0][x_cord_width_p-1:0] cache_x_lo;
    logic [num_cache_p-1:0][y_cord_width_p-1:0] cache_y_lo;
@@ -277,6 +279,8 @@ module manycore_tb_top
      ,.vcache_block_size_in_words_p(block_size_in_words_p)
      ,.vcache_sets_p(sets_p)
      ,.branch_trace_en_p(branch_trace_en_p)
+     ,.hetero_type_vec_p(hetero_type_vec_p)
+     ,.mc_composition_p(mc_composition_p)
    ) manycore (
      .clk_i(core_clk)
      ,.reset_i(core_reset)
@@ -337,17 +341,63 @@ module manycore_tb_top
   //  ...
   //
   for (genvar i = 0; i < num_tiles_x_p; i++) begin
-    assign cache_link_sif_lo[i] = ver_link_sif_lo[N][i];
-    assign ver_link_sif_li[N][i] = cache_link_sif_li[i];
-    assign cache_x_lo[i] = (x_cord_width_p)'(i);
-    assign cache_y_lo[i] = (y_cord_width_p)'(0);
+    if (mc_composition_p == e_manycore_vec_xcel) begin
+      if (i != 0 && i != (num_tiles_x_p-1)) begin
+        // exclude the IO router in the first and last column
+        assign cache_link_sif_lo[i-1] = ver_link_sif_lo[N][i];
+        assign ver_link_sif_li[N][i] = cache_link_sif_li[i-1];
+        assign cache_x_lo[i-1] = (x_cord_width_p)'(i-1);
+        assign cache_y_lo[i-1] = (y_cord_width_p)'(0);
+      end else begin
+        // tieoff the links from the first/last column IO router
+        bsg_manycore_link_sif_tieoff #(
+          .addr_width_p(addr_width_p)
+          ,.data_width_p(data_width_p)
+          ,.x_cord_width_p(x_cord_width_p)
+          ,.y_cord_width_p(y_cord_width_p)
+        ) tieoff_vx_io_N (
+          .clk_i(core_clk)
+          ,.reset_i(core_reset)
+          ,.link_sif_i(ver_link_sif_lo[N][i])
+          ,.link_sif_o(ver_link_sif_li[N][i])
+        );
+      end
+    end else begin
+      assign cache_link_sif_lo[i] = ver_link_sif_lo[N][i];
+      assign ver_link_sif_li[N][i] = cache_link_sif_li[i];
+      assign cache_x_lo[i] = (x_cord_width_p)'(i);
+      assign cache_y_lo[i] = (y_cord_width_p)'(0);
+    end
   end
 
   for (genvar i = 0; i < num_tiles_x_p; i++) begin
-    assign cache_link_sif_lo[num_tiles_x_p+i] = ver_link_sif_lo[S][i];
-    assign ver_link_sif_li[S][i] = cache_link_sif_li[num_tiles_x_p+i];
-    assign cache_x_lo[num_tiles_x_p+i] = (x_cord_width_p)'(i);
-    assign cache_y_lo[num_tiles_x_p+i] = (y_cord_width_p)'(num_tiles_y_p+2);
+    if (mc_composition_p == e_manycore_vec_xcel) begin
+      if (i != 0 && i != (num_tiles_x_p-1)) begin
+        // exclude the IO router in the first and last column
+        assign cache_link_sif_lo[num_tiles_x_p-2+i-1] = ver_link_sif_lo[S][i];
+        assign ver_link_sif_li[S][i] = cache_link_sif_li[num_tiles_x_p-2+i-1];
+        assign cache_x_lo[num_tiles_x_p-2+i-1] = (x_cord_width_p)'(i-1);
+        assign cache_y_lo[num_tiles_x_p-2+i-1] = (y_cord_width_p)'(num_tiles_y_p+2);
+      end else begin
+        // tieoff the links from the first/last column IO router
+        bsg_manycore_link_sif_tieoff #(
+          .addr_width_p(addr_width_p)
+          ,.data_width_p(data_width_p)
+          ,.x_cord_width_p(x_cord_width_p)
+          ,.y_cord_width_p(y_cord_width_p)
+        ) tieoff_vx_io_S (
+          .clk_i(core_clk)
+          ,.reset_i(core_reset)
+          ,.link_sif_i(ver_link_sif_lo[S][i])
+          ,.link_sif_o(ver_link_sif_li[S][i])
+        );
+      end
+    end else begin
+      assign cache_link_sif_lo[num_tiles_x_p+i] = ver_link_sif_lo[S][i];
+      assign ver_link_sif_li[S][i] = cache_link_sif_li[num_tiles_x_p+i];
+      assign cache_x_lo[num_tiles_x_p+i] = (x_cord_width_p)'(i);
+      assign cache_y_lo[num_tiles_x_p+i] = (y_cord_width_p)'(num_tiles_y_p+2);
+    end
   end
 
   // 0,1 for host io

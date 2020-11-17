@@ -25,9 +25,24 @@ package cl_manycore_pkg;
   parameter branch_trace_en_p = `CL_MANYCORE_BRANCH_TRACE_EN;
 
   // PP: allow heterogenous accelerators
-  parameter int hetero_type_vec_p [0:num_tiles_y_p-1][0:num_tiles_x_p-1] = '{`CL_MANYCORE_HETERO_TYPE_VEC};
+  `ifdef CL_MANYCORE_HETERO_TYPE_VEC
+  parameter int hetero_type_vec_p [0:(num_tiles_y_p*num_tiles_x_p)-1] = '{`CL_MANYCORE_HETERO_TYPE_VEC};
+  `else
+  parameter int hetero_type_vec_p [0:(num_tiles_y_p*num_tiles_x_p)-1] = '{default:0};
+  `endif
 
-  parameter num_cache_p = ((`CL_MANYCORE_DIM_X)<<1);
+  // PP: allow custom manycore top level
+  `ifdef CL_MANYCORE_MC_COMPOSITION
+  parameter mc_composition_p = `CL_MANYCORE_MC_COMPOSITION;
+  `else
+  parameter mc_composition_p = 0;
+  `endif
+
+  // PP: allow explicit number of caches. i have moved the calculation of
+  // number of caches to hardware.mk
+  parameter num_cache_p = `CL_MANYCORE_NUM_CACHES;
+  // parameter num_cache_p = ((`CL_MANYCORE_DIM_X)<<1);
+
   parameter sets_p = `CL_MANYCORE_VCACHE_SETS;
   parameter ways_p = `CL_MANYCORE_VCACHE_WAYS;
   parameter block_size_in_words_p = `CL_MANYCORE_VCACHE_BLOCK_SIZE_WORDS;

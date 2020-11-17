@@ -58,7 +58,12 @@ extern "C" {
         #define HB_MC_CONFIG_MAX_BITWIDTH_ADDR 30
         #define HB_MC_CONFIG_MAX_BITWIDTH_DATA 32
 
+#ifdef VVADD_TOPLEVEL_XCEL
+        // PP: under this custom top level the first manycore tile is at column 1
+        #define HB_MC_CONFIG_VCORE_BASE_X 1
+#else
         #define HB_MC_CONFIG_VCORE_BASE_X 0
+#endif
         #define HB_MC_CONFIG_VCORE_BASE_Y 2
 
         // normal limit for the flow-control parameters

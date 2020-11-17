@@ -641,11 +641,13 @@ static int hb_mc_loader_load_segments(const void *bin, size_t sz,
                         continue;
                 } else if (hb_mc_loader_segment_is_load_once(mc, phdr, map, tiles, ntiles)) {
                         // this segment should be loaded only once (e.g. DRAM = .text + .dram)
+                        bsg_pr_dbg("%s: load_once segment found\n", __func__);
                         rc = hb_mc_loader_load_tile_segment(mc, map, phdr, segdata, tiles[0]);
                         if (rc != HB_MC_SUCCESS) {
                                 return rc;
                         }
                 } else { // this segment should be loaded once for each tile (e.g. DMEM = .data)
+                        bsg_pr_dbg("%s: load_all segment found\n", __func__);
                         rc = hb_mc_loader_load_tiles_segment(mc, map, phdr, segdata,
                                                              tiles, ntiles);
                         if (rc != HB_MC_SUCCESS)
@@ -831,12 +833,18 @@ int hb_mc_loader_load(const void *bin, size_t sz, hb_mc_manycore_t *mc,
         if (ntiles < 1)
                 return HB_MC_INVALID;
 
+        bsg_pr_dbg("%s: Validating ELF file...\n", __func__);
+
         // Validate ELF File
         rc = hb_mc_loader_elf_validate(bin, sz);
         if (rc != HB_MC_SUCCESS) {
                 bsg_pr_dbg("%s: failed to validate binary\n", __func__);
                 return rc;
         }
+
+        bsg_pr_dbg("%s: Validated!\n", __func__);
+
+        bsg_pr_dbg("%s: Setting tile CSRs...\n", __func__);
 
         // Set CSRs
         rc = hb_mc_loader_tiles_initialize(mc, map, tiles, ntiles);
@@ -845,12 +853,18 @@ int hb_mc_loader_load(const void *bin, size_t sz, hb_mc_manycore_t *mc,
                 return rc;
         }
 
+        bsg_pr_dbg("%s: Tile CSRs set!\n", __func__);
+
+        bsg_pr_dbg("%s: Loading segments...\n", __func__);
+
         // Load segments
         rc = hb_mc_loader_load_segments(bin, sz, mc, map, tiles, ntiles);
         if (rc != HB_MC_SUCCESS) {
                 bsg_pr_dbg("%s: failed to load segments\n", __func__);
                 return rc;
         }
+
+        bsg_pr_dbg("%s: All segments loaded!\n", __func__);
 
         return HB_MC_SUCCESS;
 }
