@@ -1035,17 +1035,19 @@ int hb_mc_device_init_custom_dimensions (hb_mc_device_t *device,
 static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
         // PP: HACK! i have to manually remove the xcel tiles from the tile list
         // because the xcel is not supposed to handle tile freeze, loading
-        // instructions into the SRAM, etc. Assume the bottom row is dedicated to
-        // accelerators...
+        // instructions into the SRAM, etc.
         hb_mc_dimension_t dim = device->mesh->dim;
 
 #ifdef VVADD_XCEL
         // PP: this is to exclude the bottom row (used by vvadd xcels)
         *len = hb_mc_dimension_to_length(dim) - hb_mc_dimension_get_x(dim);
 #elif VVADD_TOPLEVEL_XCEL
-        // PP: this is to exclude the first and last column from the tile list
-        /* *len = hb_mc_dimension_to_length(dim) - 2*hb_mc_dimension_get_y(dim); */
+        // PP: we need to exclude the first and last column from the tile list,
+        // which has been accounted for when device->mesh->dim got initialized
         *len = hb_mc_dimension_to_length(dim);
+#elif SMU_XCEL
+        // PP: we need to exclude the bottom right tile from the tile list
+        *len = hb_mc_dimension_to_length(dim)-1;
 #else
         // PP: fall back to vanilla manycore
         *len = hb_mc_dimension_to_length(dim);
@@ -1057,31 +1059,30 @@ static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
 
 static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coordinate_t *lst) {
 /* #ifdef VVADD_TOPLEVEL_XCEL */
-#ifdef VVADD_TOPLEVEL_XCEL_UNUSED
-        hb_mc_dimension_t dim = device->mesh->dim;
-        int dim_x    = hb_mc_dimension_get_x(dim);
-        int dim_y    = hb_mc_dimension_get_y(dim);
-        int tile_cnt = 0;
+/* #ifdef VVADD_TOPLEVEL_XCEL_UNUSED */
+/*         hb_mc_dimension_t dim = device->mesh->dim; */
+/*         int dim_x    = hb_mc_dimension_get_x(dim); */
+/*         int dim_y    = hb_mc_dimension_get_y(dim); */
+/*         int tile_cnt = 0; */
 
-        bsg_pr_dbg("%s: dim.y = %d, dim.x = %d\n", __func__, dim_y, dim_x);
+/*         bsg_pr_dbg("%s: dim.y = %d, dim.x = %d\n", __func__, dim_y, dim_x); */
 
-        // PP: this is to exclude the first and last columns
-        for (int y = 0; y < dim_y; y++)
-          for (int x = 0; x < dim_x; x++) {
-            if (x == 0 || x == (dim_x-1))
-              continue;
+/*         // PP: this is to exclude the first and last columns */
+/*         for (int y = 0; y < dim_y; y++) */
+/*           for (int x = 0; x < dim_x; x++) { */
+/*             if (x == 0 || x == (dim_x-1)) */
+/*               continue; */
 
-            int tile_id = y*dim_x+x;
+/*             int tile_id = y*dim_x+x; */
 
-            bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n",
-                __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x);
+/*             bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n", */
+/*                 __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x); */
 
-            lst[tile_cnt] = device->mesh->tiles[tile_id].coord;
-            tile_cnt++;
-          }
-        assert(tile_cnt == len);
-#else
-        // PP: vvadd xcel or vanilla manycore
+/*             lst[tile_cnt] = device->mesh->tiles[tile_id].coord; */
+/*             tile_cnt++; */
+/*           } */
+/*         assert(tile_cnt == len); */
+/* #else */
         for (int tile_id = 0; tile_id < len; tile_id ++) {
 
             bsg_pr_dbg("%s: tid = %d\n", __func__, tile_id);
@@ -1090,7 +1091,7 @@ static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coor
 
             lst[tile_id] = device->mesh->tiles[tile_id].coord;
         }
-#endif
+/* #endif */
         return HB_MC_SUCCESS;
 }
 

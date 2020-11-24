@@ -109,6 +109,9 @@ INDEPENDENT_TESTS += test_cgra_xcel
 # PP: add the toplevel vvadd xcel test
 INDEPENDENT_TESTS += test_vec_add_toplevel_xcel
 
+# PP: add the SMU xcel test
+INDEPENDENT_TESTS += test_smu_xcel
+
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 
@@ -119,9 +122,15 @@ DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
 
 # PP: I have to check $MAKECMDGOALS to define custom toplevel symbols
 ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_xcel)
+	# This config occupies the last row and instantiates vvadd xcels instead
 	DEFINES     += -DVVADD_XCEL
 	LIB_DEFINES =  -DVVADD_XCEL
+else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_xcel)
+	# This config instantiates SMU in the bottom right corner
+	DEFINES     += -DSMU_XCEL
+	LIB_DEFINES =  -DSMU_XCEL
 else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_toplevel_xcel)
+	# This config describes the custom HB top level that has vvadd xcels
 	DEFINES     += -DVVADD_TOPLEVEL_XCEL
 	LIB_DEFINES =  -DVVADD_TOPLEVEL_XCEL
 endif
