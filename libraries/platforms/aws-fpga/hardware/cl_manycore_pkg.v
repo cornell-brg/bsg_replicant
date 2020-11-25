@@ -33,9 +33,9 @@ package cl_manycore_pkg;
 
   // PP: allow custom manycore top level
   `ifdef CL_MANYCORE_MC_COMPOSITION
-  parameter mc_composition_p = `CL_MANYCORE_MC_COMPOSITION;
+  parameter [2:0] mc_composition_p = `CL_MANYCORE_MC_COMPOSITION;
   `else
-  parameter mc_composition_p = 0;
+  parameter [2:0] mc_composition_p = 0;
   `endif
 
   // PP: allow explicit number of caches. i have moved the calculation of
