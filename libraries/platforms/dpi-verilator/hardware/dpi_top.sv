@@ -54,8 +54,6 @@ module manycore_tb_top
    // TODO: (Future) Host coordinate should be a parameter
    logic [x_cord_width_p-1:0] host_x_cord_li = (x_cord_width_p)'(0);
    logic [y_cord_width_p-1:0] host_y_cord_li = (y_cord_width_p)'(1);
-   /* localparam [x_cord_width_p-1:0] host_x_cord_li = (mc_composition_p == e_manycore_vec_xcel) ? 1 : 0; */
-   /* localparam [y_cord_width_p-1:0] host_y_cord_li = (y_cord_width_p)'(1); */
 
    logic [num_cache_p-1:0][x_cord_width_p-1:0] cache_x_lo;
    logic [num_cache_p-1:0][y_cord_width_p-1:0] cache_y_lo;
@@ -341,7 +339,11 @@ module manycore_tb_top
   //  ...
   //
   for (genvar i = 0; i < num_tiles_x_p; i++) begin
-    if (mc_composition_p == e_manycore_vec_xcel) begin
+    if ((mc_composition_p == e_manycore_vec_xcel) ||
+        (mc_composition_p == e_manycore_load_smu)) begin
+      //***************************************************
+      // VVADD/SMU xcel custom toplevel
+      //***************************************************
       if (i != 0 && i != (num_tiles_x_p-1)) begin
         // exclude the IO router in the first and last column
         assign cache_link_sif_lo[i-1] = ver_link_sif_lo[N][i];
@@ -363,6 +365,9 @@ module manycore_tb_top
         );
       end
     end else begin
+      //***************************************************
+      // default toplevel
+      //***************************************************
       assign cache_link_sif_lo[i] = ver_link_sif_lo[N][i];
       assign ver_link_sif_li[N][i] = cache_link_sif_li[i];
       assign cache_x_lo[i] = (x_cord_width_p)'(i);
@@ -371,7 +376,11 @@ module manycore_tb_top
   end
 
   for (genvar i = 0; i < num_tiles_x_p; i++) begin
-    if (mc_composition_p == e_manycore_vec_xcel) begin
+    if ((mc_composition_p == e_manycore_vec_xcel) ||
+        (mc_composition_p == e_manycore_load_smu)) begin
+      //***************************************************
+      // VVADD/SMU xcel custom toplevel
+      //***************************************************
       if (i != 0 && i != (num_tiles_x_p-1)) begin
         // exclude the IO router in the first and last column
         assign cache_link_sif_lo[num_tiles_x_p-2+i-1] = ver_link_sif_lo[S][i];
@@ -393,6 +402,9 @@ module manycore_tb_top
         );
       end
     end else begin
+      //***************************************************
+      // default toplevel
+      //***************************************************
       assign cache_link_sif_lo[num_tiles_x_p+i] = ver_link_sif_lo[S][i];
       assign ver_link_sif_li[S][i] = cache_link_sif_li[num_tiles_x_p+i];
       assign cache_x_lo[num_tiles_x_p+i] = (x_cord_width_p)'(i);

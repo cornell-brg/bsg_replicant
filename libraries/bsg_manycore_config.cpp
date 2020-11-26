@@ -112,8 +112,8 @@ int hb_mc_config_init(const hb_mc_config_raw_t raw[HB_MC_CONFIG_MAX],
         xdim_max = (1 << xlogsz_max);
 
         idx = raw[HB_MC_CONFIG_DEVICE_DIM_X];
-#ifdef VVADD_TOPLEVEL_XCEL
-        // PP: if this is a custom top level, exclude the first and last columns
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
+        // PP: vvadd/smu custom top level, exclude the first and last columns
         idx -= 2;
 #endif
         //Temporarily removed this condition until it is cleared up. TODO: Fix.
@@ -126,6 +126,10 @@ int hb_mc_config_init(const hb_mc_config_raw_t raw[HB_MC_CONFIG_MAX],
         config->vcore_dimensions.x = idx;
 
         idx = raw[HB_MC_CONFIG_DEVICE_DIM_Y];
+#if defined(SMU_TOPLEVEL_XCEL)
+        // PP: smu custom top level, exclude the first and last rows
+        idx -= 2;
+#endif
         if ((idx < HB_MC_COORDINATE_MIN) || (idx > HB_MC_COORDINATE_MAX)){
                 bsg_pr_err("%s: Invalid Device Dimension Y %d: %s\n",
                            __func__, idx, error_init_help);

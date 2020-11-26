@@ -58,13 +58,18 @@ extern "C" {
         #define HB_MC_CONFIG_MAX_BITWIDTH_ADDR 30
         #define HB_MC_CONFIG_MAX_BITWIDTH_DATA 32
 
-#ifdef VVADD_TOPLEVEL_XCEL
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
         // PP: under this custom top level the first manycore tile is at column 1
         #define HB_MC_CONFIG_VCORE_BASE_X 1
 #else
         #define HB_MC_CONFIG_VCORE_BASE_X 0
 #endif
+#if defined(SMU_TOPLEVEL_XCEL)
+        // PP: under this custom top level the first manycore tile is at row 3
+        #define HB_MC_CONFIG_VCORE_BASE_Y 3
+#else
         #define HB_MC_CONFIG_VCORE_BASE_Y 2
+#endif
 
         // normal limit for the flow-control parameters
         #define HB_MC_REMOTE_LOAD_MIN 1
@@ -245,9 +250,16 @@ extern "C" {
 
         static inline hb_mc_dimension_t hb_mc_config_get_dimension_network(const hb_mc_config_t *cfg){
                 hb_mc_dimension_t dim = hb_mc_config_get_dimension_vcore(cfg);
+#if defined(SMU_TOPLEVEL_XCEL)
+                // PP: SMU custom toplevel has two extra SMU rows
+                // The Network has three additional Y rows: An IO Row, and two DRAM/Cache Rows
+                return hb_mc_dimension(hb_mc_dimension_get_x(dim),
+                                       hb_mc_dimension_get_y(dim) + 5);
+#else
                 // The Network has three additional Y rows: An IO Row, and two DRAM/Cache Rows
                 return hb_mc_dimension(hb_mc_dimension_get_x(dim),
                                        hb_mc_dimension_get_y(dim) + 3);
+#endif
         }
 
         static inline uint8_t hb_mc_config_get_vcache_bitwidth_tag_addr(const hb_mc_config_t *cfg)

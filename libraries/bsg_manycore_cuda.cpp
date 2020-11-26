@@ -1041,15 +1041,12 @@ static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
 #ifdef VVADD_XCEL
         // PP: this is to exclude the bottom row (used by vvadd xcels)
         *len = hb_mc_dimension_to_length(dim) - hb_mc_dimension_get_x(dim);
-#elif VVADD_TOPLEVEL_XCEL
-        // PP: we need to exclude the first and last column from the tile list,
-        // which has been accounted for when device->mesh->dim got initialized
-        *len = hb_mc_dimension_to_length(dim);
 #elif SMU_XCEL
         // PP: we need to exclude the bottom right tile from the tile list
         *len = hb_mc_dimension_to_length(dim)-1;
 #else
-        // PP: fall back to vanilla manycore
+        // PP: extra columns/rows have been accounted for when device->mesh->dim
+        // got initialized
         *len = hb_mc_dimension_to_length(dim);
 #endif
 
@@ -1058,31 +1055,8 @@ static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
 
 
 static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coordinate_t *lst) {
-/* #ifdef VVADD_TOPLEVEL_XCEL */
-/* #ifdef VVADD_TOPLEVEL_XCEL_UNUSED */
-/*         hb_mc_dimension_t dim = device->mesh->dim; */
-/*         int dim_x    = hb_mc_dimension_get_x(dim); */
-/*         int dim_y    = hb_mc_dimension_get_y(dim); */
-/*         int tile_cnt = 0; */
-
-/*         bsg_pr_dbg("%s: dim.y = %d, dim.x = %d\n", __func__, dim_y, dim_x); */
-
-/*         // PP: this is to exclude the first and last columns */
-/*         for (int y = 0; y < dim_y; y++) */
-/*           for (int x = 0; x < dim_x; x++) { */
-/*             if (x == 0 || x == (dim_x-1)) */
-/*               continue; */
-
-/*             int tile_id = y*dim_x+x; */
-
-/*             bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n", */
-/*                 __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x); */
-
-/*             lst[tile_cnt] = device->mesh->tiles[tile_id].coord; */
-/*             tile_cnt++; */
-/*           } */
-/*         assert(tile_cnt == len); */
-/* #else */
+        // PP: If the device mesh dimension and tile list lenght are correctly set,
+        // there should be nothing to change in this function.
         for (int tile_id = 0; tile_id < len; tile_id ++) {
 
             bsg_pr_dbg("%s: tid = %d\n", __func__, tile_id);
@@ -1091,7 +1065,6 @@ static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coor
 
             lst[tile_id] = device->mesh->tiles[tile_id].coord;
         }
-/* #endif */
         return HB_MC_SUCCESS;
 }
 
@@ -1110,12 +1083,20 @@ static int hb_mc_device_program_load (hb_mc_device_t *device) {
 
         uint32_t num_tiles;
 
-        hb_mc_get_tile_list_len(device, &num_tiles);
+        error = hb_mc_get_tile_list_len(device, &num_tiles);
+        if (error != HB_MC_SUCCESS) {
+                bsg_pr_err("%s: failed to get tile list length.\n", __func__); 
+                return error;
+        }
 
         // Use VLA so that we don't have to free it manually
         hb_mc_coordinate_t tile_list[num_tiles];
 
-        hb_mc_get_tile_list(device, num_tiles, tile_list);
+        error = hb_mc_get_tile_list(device, num_tiles, tile_list);
+        if (error != HB_MC_SUCCESS) {
+                bsg_pr_err("%s: failed to get tile list.\n", __func__); 
+                return error;
+        }
 
         // Display tile list info
         bsg_pr_dbg("%s: Hack to prevent xcels from freezing!\n", __func__);
@@ -1654,12 +1635,20 @@ int hb_mc_device_finish (hb_mc_device_t *device) {
 
         uint32_t num_tiles;
 
-        hb_mc_get_tile_list_len(device, &num_tiles);
+        error = hb_mc_get_tile_list_len(device, &num_tiles);
+        if (error != HB_MC_SUCCESS) {
+                bsg_pr_err("%s: failed to get tile list length.\n", __func__);
+                return error;
+        }
 
         // Use VLA so that we don't have to free it manually
         hb_mc_coordinate_t tile_list[num_tiles];
 
-        hb_mc_get_tile_list(device, num_tiles, tile_list);
+        error = hb_mc_get_tile_list(device, num_tiles, tile_list);
+        if (error != HB_MC_SUCCESS) {
+                bsg_pr_err("%s: failed to get tile list length.\n", __func__);
+                return error;
+        }
 
         printf("[bsg_manycore_cuda.cpp] Hack to prevent xcels from freezing!\n");
         printf("[bsg_manycore_cuda.cpp] Num tiles = %d\n", num_tiles);

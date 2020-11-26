@@ -351,9 +351,13 @@ static bool hb_mc_manycore_dst_npa_is_valid(hb_mc_manycore_t *mc, const hb_mc_np
         const hb_mc_config_t *cfg = hb_mc_manycore_get_config(mc);
         hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
 
-#ifdef VVADD_TOPLEVEL_XCEL
-        // For custom toplevel the first column is used for xcels
-        if (hb_mc_npa_get_x(npa) > hb_mc_dimension_get_x(dim)) {
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
+        // For vvadd/smu custom toplevel the first column is used for xcels.
+        // Note that this check means the runtime cannot send requests to
+        // xcels in the last column -- only cores are able to interact with
+        // them!
+        if ((hb_mc_npa_get_x(npa) == 0) ||
+            (hb_mc_npa_get_x(npa) > hb_mc_dimension_get_x(dim))) {
 #else
         if (hb_mc_npa_get_x(npa) >= hb_mc_dimension_get_x(dim)) {
 #endif

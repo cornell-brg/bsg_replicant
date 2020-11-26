@@ -100,17 +100,12 @@ INDEPENDENT_TESTS += test_tracer
 INDEPENDENT_TESTS += test_conv1d
 INDEPENDENT_TESTS += test_conv2d
 
-# PP: add the VVADD accelerator test
+# PP: accelerator tests
 INDEPENDENT_TESTS += test_vec_add_xcel
-
-# PP: add the CGRA accelerator test
 INDEPENDENT_TESTS += test_cgra_xcel
-
-# PP: add the toplevel vvadd xcel test
 INDEPENDENT_TESTS += test_vec_add_toplevel_xcel
-
-# PP: add the SMU xcel test
 INDEPENDENT_TESTS += test_smu_xcel
+INDEPENDENT_TESTS += test_smu_toplevel_xcel
 
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
@@ -125,14 +120,20 @@ ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_xcel)
 	# This config occupies the last row and instantiates vvadd xcels instead
 	DEFINES     += -DVVADD_XCEL
 	LIB_DEFINES =  -DVVADD_XCEL
+else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_toplevel_xcel)
+	# This config describes the custom HB top level that has vvadd xcels
+	# The first and last column in the manycore toplevel are used for xcels
+	DEFINES     += -DVVADD_TOPLEVEL_XCEL
+	LIB_DEFINES =  -DVVADD_TOPLEVEL_XCEL
 else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_xcel)
 	# This config instantiates SMU in the bottom right corner
 	DEFINES     += -DSMU_XCEL
 	LIB_DEFINES =  -DSMU_XCEL
-else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),vec_add_toplevel_xcel)
-	# This config describes the custom HB top level that has vvadd xcels
-	DEFINES     += -DVVADD_TOPLEVEL_XCEL
-	LIB_DEFINES =  -DVVADD_TOPLEVEL_XCEL
+else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_toplevel_xcel)
+	# This config describes the custom HB top level that has SMUs
+	# The first and last column and row in the manycore toplevel are used for SMUs
+	DEFINES     += -DSMU_TOPLEVEL_XCEL
+	LIB_DEFINES =  -DSMU_TOPLEVEL_XCEL
 endif
 
 CDEFINES   += $(DEFINES)

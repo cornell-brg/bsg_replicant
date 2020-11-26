@@ -38,7 +38,7 @@ __BSG_MACHINE_DRAMSIM3_CHIP_SIZE_IN_WORDS := $(shell echo 2^30 | bc) # 4GB
 __BSG_MACHINE_DRAMSIM3_CHIP_CH_SIZE_IN_WORDS := $(shell echo $(__BSG_MACHINE_DRAMSIM3_CHIP_SIZE_IN_WORDS)/8 | bc)
 
 BSG_MACHINE_GLOBAL_X                  = 18
-BSG_MACHINE_GLOBAL_Y                  = 9
+BSG_MACHINE_GLOBAL_Y                  = 11
 # PP: might need explicit number of caches
 BSG_MACHINE_NUM_CACHES                = 32
 BSG_MACHINE_VCACHE_SET                = 16
@@ -57,7 +57,9 @@ BSG_MACHINE_IO_REMOTE_LOAD_CAP        = 32
 BSG_MACHINE_IO_HOST_CREDITS_CAP       = 256
 BSG_MACHINE_IO_EP_MAX_OUT_CREDITS     = 16
 BSG_MACHINE_DRAM_SIZE_WORDS           := $(shell echo $(__BSG_MACHINE_DRAMSIM3_CHIP_CH_SIZE_IN_WORDS)*$(BSG_MACHINE_DRAM_CHANNELS) | bc)
+# PP: SMU toplevel has two extra rows and columns
 __BSG_MACHINE_MANYCORE_X              := $$(( $(BSG_MACHINE_GLOBAL_X) - 2 ))
+__BSG_MACHINE_MANYCORE_Y              := $$(( $(BSG_MACHINE_GLOBAL_Y) - 2 ))
 BSG_MACHINE_DRAM_BANK_SIZE_WORDS      := $(shell echo $(BSG_MACHINE_DRAM_SIZE_WORDS)/$(__BSG_MACHINE_MANYCORE_X)/2 | bc)
 BSG_MACHINE_DATA_WIDTH                = 32
 
@@ -66,7 +68,8 @@ BSG_MACHINE_DATA_WIDTH                = 32
 # environment when required.
 BSG_MACHINE_BRANCH_TRACE_EN          ?= 0
 
-CL_MANYCORE_MC_COMPOSITION           := 1
+# PP: e_manycore_load_smu composition
+CL_MANYCORE_MC_COMPOSITION           := 2
 
 CL_MANYCORE_HOST_COORD_X             := 0
 CL_MANYCORE_HOST_COORD_Y             := 1
