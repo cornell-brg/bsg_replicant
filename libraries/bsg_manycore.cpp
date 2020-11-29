@@ -650,6 +650,8 @@ int hb_mc_manycore_flush_vcache(hb_mc_manycore_t *mc)
         if (err != HB_MC_SUCCESS)
                 return err;
 
+        /* printf("[FlushV$] all $ tags flushed!\n"); */
+
         // read a word from each cache
         for (hb_mc_epa_t cache_id = 0; cache_id < hb_mc_vcache_num_caches(mc); cache_id++) {
                 hb_mc_npa_t way_addr = hb_mc_vcache_way_npa(mc, cache_id, 0, 0);

@@ -63,13 +63,23 @@ REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 ###############################################################################
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
 
+# PP: I have to check $MAKECMDGOALS to define custom toplevel symbols
+# If we are building the test_python.* target, assume we are using the SMU
+# toplevel
+ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),python)
+	# This config describes the custom HB top level that has SMUs
+	# The first and last column and row in the manycore toplevel are used for SMUs
+	DEFINES     += -DSMU_TOPLEVEL_XCEL
+	LIB_DEFINES =  -DSMU_TOPLEVEL_XCEL
+endif
+
 CDEFINES   += $(DEFINES)
 CXXDEFINES += $(DEFINES)
 
-FLAGS     = -g -Wall $(shell python3.6-config --cflags) -O1 
+FLAGS     = -g -Wall $(shell python3.6m-config --cflags) -O1 
 CFLAGS   += -std=c99 $(FLAGS)
 CXXFLAGS += -std=c++11 $(FLAGS) 
-LDFLAGS  += $(shell python3.6-config --ldflags)
+LDFLAGS  += $(shell python3.6m-config --ldflags)
 
 ###############################################################################
 # Execution Arguments (C_ARGS)

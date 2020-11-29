@@ -46,8 +46,13 @@ static int hb_mc_dma_npa_to_buffer(hb_mc_manycore_t *mc, const hb_mc_npa_t *npa,
         unsigned long channels = hb_mc_config_get_dram_channels(cfg);
         unsigned long caches_per_channel = caches/channels;
 
+        char npa_str[256];
+
         dma_pr_dbg(mc, "%s: caches = %lu, channels = %lu, caches_per_channel = %lu\n",
                         __func__, caches, channels, caches_per_channel);
+
+        dma_pr_dbg(mc, "%s: given NPA = %s\n",
+                        __func__, hb_mc_npa_to_string(npa, npa_str, sizeof(npa_str)));
 
         /*
           Figure out which memory channel and bank this NPA maps to.
@@ -56,6 +61,9 @@ static int hb_mc_dma_npa_to_buffer(hb_mc_manycore_t *mc, const hb_mc_npa_t *npa,
         parameter_t id = cache_id / caches_per_channel; // which channel
         parameter_t bank = cache_id % caches_per_channel; // which bank within channel
 
+        dma_pr_dbg(mc, "%s: cache_id = %d, channel = %d, bank = %d\n",
+                        __func__, cache_id, id, bank);
+
         /*
           Use the backdoor to our non-synthesizable memory.
         */
@@ -63,7 +71,6 @@ static int hb_mc_dma_npa_to_buffer(hb_mc_manycore_t *mc, const hb_mc_npa_t *npa,
         parameter_t bank_size = memory->_data.size()/caches_per_channel;
 
         hb_mc_epa_t epa = hb_mc_npa_get_epa(npa);
-        char npa_str[256];
 
         if (memory == nullptr) {
                 dma_pr_err(mc, " %s: Could not get the memory for endpoint at %s\n",
