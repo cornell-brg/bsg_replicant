@@ -285,7 +285,9 @@ static bool default_eva_is_dram(const hb_mc_eva_t *eva)
 
 static uint32_t default_get_dram_max_x_coord(const hb_mc_config_t *cfg)
 {
-        hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
+        /* hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg); */
+        // PP: should use vcore dimension?
+        hb_mc_dimension_t dim = hb_mc_config_get_dimension_vcore(cfg);
 #if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
         // vcache/DRAM x cords: 1 ~ 16 (for dim.x == 16)
         return hb_mc_dimension_get_x(dim);
@@ -297,7 +299,9 @@ static uint32_t default_get_dram_max_x_coord(const hb_mc_config_t *cfg)
 
 static uint32_t default_get_x_dimlog(const hb_mc_config_t *cfg)
 {
-        hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
+        /* hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg); */
+        // PP: should use vcore dimension?
+        hb_mc_dimension_t dim = hb_mc_config_get_dimension_vcore(cfg);
         return ceil(log2(hb_mc_dimension_get_x(dim)));
 }
 

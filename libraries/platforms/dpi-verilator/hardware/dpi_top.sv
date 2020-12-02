@@ -457,6 +457,7 @@ module manycore_tb_top
        ,.icache_tag_width_p(icache_tag_width_p)
        ,.icache_entries_p(icache_entries_p)
        ,.data_width_p(data_width_p)
+       ,.mc_composition_p(mc_composition_p)
        )
    vcore_prof
      (

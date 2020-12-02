@@ -49,6 +49,10 @@
 #include <math.h>
 #endif
 
+#ifndef SMU_TOPLEVEL_XCEL
+static_assert(false, "SMU_TOPLEVEL_XCEL not defined!");
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,18 +62,18 @@ extern "C" {
         #define HB_MC_CONFIG_MAX_BITWIDTH_ADDR 30
         #define HB_MC_CONFIG_MAX_BITWIDTH_DATA 32
 
-/* #if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL) */
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
         // PP: under this custom top level the first manycore tile is at column 1
         #define HB_MC_CONFIG_VCORE_BASE_X 1
-/* #else */
-        /* #define HB_MC_CONFIG_VCORE_BASE_X 0 */
-/* #endif */
-/* #if defined(SMU_TOPLEVEL_XCEL) */
+#else
+        #define HB_MC_CONFIG_VCORE_BASE_X 0
+#endif
+#if defined(SMU_TOPLEVEL_XCEL)
         // PP: under this custom top level the first manycore tile is at row 3
         #define HB_MC_CONFIG_VCORE_BASE_Y 3
-/* #else */
-        /* #define HB_MC_CONFIG_VCORE_BASE_Y 2 */
-/* #endif */
+#else
+        #define HB_MC_CONFIG_VCORE_BASE_Y 2
+#endif
 
         // normal limit for the flow-control parameters
         #define HB_MC_REMOTE_LOAD_MIN 1
@@ -250,16 +254,16 @@ extern "C" {
 
         static inline hb_mc_dimension_t hb_mc_config_get_dimension_network(const hb_mc_config_t *cfg){
                 hb_mc_dimension_t dim = hb_mc_config_get_dimension_vcore(cfg);
-/* #if defined(SMU_TOPLEVEL_XCEL) */
+#if defined(SMU_TOPLEVEL_XCEL)
                 // PP: SMU custom toplevel has two extra SMU rows
                 // The Network has three additional Y rows: An IO Row, and two DRAM/Cache Rows
-                return hb_mc_dimension(hb_mc_dimension_get_x(dim),
+                return hb_mc_dimension(hb_mc_dimension_get_x(dim) + 2,
                                        hb_mc_dimension_get_y(dim) + 5);
-/* #else */
+#else
                 // The Network has three additional Y rows: An IO Row, and two DRAM/Cache Rows
-                /* return hb_mc_dimension(hb_mc_dimension_get_x(dim), */
-                                       /* hb_mc_dimension_get_y(dim) + 3); */
-/* #endif */
+                return hb_mc_dimension(hb_mc_dimension_get_x(dim),
+                                       hb_mc_dimension_get_y(dim) + 3);
+#endif
         }
 
         static inline uint8_t hb_mc_config_get_vcache_bitwidth_tag_addr(const hb_mc_config_t *cfg)
@@ -338,15 +342,17 @@ extern "C" {
         hb_mc_config_get_dram_coordinate(const hb_mc_config_t *cfg, hb_mc_idx_t cache_id)
         {
                 hb_mc_coordinate_t dims;
-                dims = hb_mc_config_get_dimension_network(cfg);
+                /* dims = hb_mc_config_get_dimension_network(cfg); */
+                // PP: we should use vcore dimension here?
+                dims = hb_mc_config_get_dimension_vcore(cfg);
 
-/* #if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL) */
-                // dims.x: the number of vcores in the array (16)
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
+                // dims.x: the number of vcore columns in the array (16)
                 // custom toplevel has a column offset of 1
                 hb_mc_idx_t x = cache_id % hb_mc_dimension_get_x(dims) + 1;
-/* #else */
-                /* hb_mc_idx_t x = cache_id % hb_mc_dimension_get_x(dims); */
-/* #endif */
+#else
+                hb_mc_idx_t x = cache_id % hb_mc_dimension_get_x(dims);
+#endif
                 hb_mc_idx_t y = cache_id / hb_mc_dimension_get_x(dims) == 0
                         ? hb_mc_config_get_dram_low_y(cfg)
                         : hb_mc_config_get_dram_high_y(cfg);
@@ -358,38 +364,45 @@ extern "C" {
         hb_mc_idx_t hb_mc_config_get_num_dram_coordinates(const hb_mc_config_t *cfg)
         {
                 /* there are victim caches at the top and bottom of the mesh */
-                return hb_mc_coordinate_get_x(hb_mc_config_get_dimension_network(cfg))*2;
+                // PP: we should use vcore dimension here?
+                hb_mc_coordinate_t dims;
+                dims = hb_mc_config_get_dimension_vcore(cfg);
+                return hb_mc_coordinate_get_x(dims)*2;
         }
 
         static inline hb_mc_idx_t hb_mc_config_get_dram_id
         (const hb_mc_config_t *cfg, hb_mc_coordinate_t dram_xy)
         {
                 hb_mc_idx_t y = hb_mc_coordinate_get_y(dram_xy);
+                hb_mc_coordinate_t dims;
+                dims = hb_mc_config_get_dimension_vcore(cfg);
+
                 printf("hb_mc_config_get_dram_id: get_x = %d\n", hb_mc_coordinate_get_x(dram_xy));
                 printf("hb_mc_config_get_dram_id: y = %d, low_y = %d, high_y = %d\n",
                     y, hb_mc_config_get_dram_low_y(cfg), hb_mc_config_get_dram_high_y(cfg));
+
                 if (y == hb_mc_config_get_dram_low_y(cfg)) {
                         // northern cache
-/* #if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL) */
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
                         // custom toplevel has a column offset of 1
                         printf("hb_mc_config_get_dram_id[SMU]: return = %d\n", hb_mc_coordinate_get_x(dram_xy)-1);
                         return hb_mc_coordinate_get_x(dram_xy) - 1;
-/* #else */
-                        /* printf("hb_mc_config_get_dram_id: return = %d\n", hb_mc_coordinate_get_x(dram_xy)); */
-                        /* return hb_mc_coordinate_get_x(dram_xy); */
-/* #endif */
+#else
+                        printf("hb_mc_config_get_dram_id: return = %d\n", hb_mc_coordinate_get_x(dram_xy));
+                        return hb_mc_coordinate_get_x(dram_xy);
+#endif
                 } else if (y == hb_mc_config_get_dram_high_y(cfg)) {
                         // southern cache
-/* #if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL) */
+#if defined(VVADD_TOPLEVEL_XCEL) || defined(SMU_TOPLEVEL_XCEL)
                         // custom toplevel has a column offset of 1
-                        printf("hb_mc_config_get_dram_id[SMU]\n");
-                        return hb_mc_dimension_get_x(hb_mc_config_get_dimension_network(cfg)) - 2
-                                + hb_mc_coordinate_get_x(dram_xy) - 1;
-/* #else */
-                        /* printf("hb_mc_config_get_dram_id\n"); */
-                        /* return hb_mc_dimension_get_x(hb_mc_config_get_dimension_network(cfg)) */
-                                /* + hb_mc_coordinate_get_x(dram_xy); */
-/* #endif */
+                        printf("hb_mc_config_get_dram_id[SMU]: return = %d\n",
+                               hb_mc_coordinate_get_x(dims)+hb_mc_coordinate_get_x(dram_xy)-1);
+                        return hb_mc_dimension_get_x(dims) + hb_mc_coordinate_get_x(dram_xy) - 1;
+#else
+                        printf("hb_mc_config_get_dram_id\n");
+                        return hb_mc_dimension_get_x(hb_mc_config_get_dimension_network(cfg))
+                                + hb_mc_coordinate_get_x(dram_xy);
+#endif
                 } else {
                         printf("hb_mc_config_get_dram_id: error!\n");
                         // error
@@ -405,7 +418,9 @@ extern "C" {
         /* Returns the size of DRAM accessible to each manycore tile */
         static inline size_t hb_mc_config_get_dram_size(const hb_mc_config_t *cfg)
         {
-                hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg);
+                // PP: we should use vcore dimension here?
+                /* hb_mc_dimension_t dim = hb_mc_config_get_dimension_vcore(cfg); */
+                /* hb_mc_dimension_t dim = hb_mc_config_get_dimension_network(cfg); */
                 return hb_mc_config_get_dram_bank_size(cfg)
                     *  hb_mc_config_get_num_dram_coordinates(cfg);
         }
