@@ -87,9 +87,9 @@ LIB_STRICT_OBJECTS += $(LIBRARIES_PATH)/bsg_manycore_memsys.o
 # Objects that should be compiled with debug flags
 # PP: enable debug printing
 # LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_printing.o
-# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore.o
-# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_cuda.o
-LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_loader.o
+LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore.o
+LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_cuda.o
+# LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_loader.o
 # LIB_DEBUG_OBJECTS  += $(LIBRARIES_PATH)/bsg_manycore_eva.o
 # LIB_DEBUG_OBJECTS  +=
 

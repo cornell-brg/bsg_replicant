@@ -471,7 +471,12 @@ static int hb_mc_tile_group_initialize_tiles (hb_mc_device_t *device,
 
         int error;
 
+#if defined(SMU_XCEL_5050)
         tg->origin = origin;
+        tg->origin.x = tg->origin.x+1;
+#else
+        tg->origin = origin;
+#endif
 
         error = hb_mc_origin_eva_map_init (tg->map, origin); 
         if (error != HB_MC_SUCCESS) { 
@@ -646,7 +651,13 @@ static int hb_mc_tile_group_enqueue (hb_mc_device_t* device,
 
         hb_mc_tile_group_t* tg = &device->tile_groups[device->num_tile_groups];
         tg->dim = dim;
+#if defined(SMU_XCEL_5050)
         tg->origin = device->mesh->origin;
+        // PP: first column in 50/50 SMU is a column of SMUs
+        tg->origin.x = tg->origin.x+1;
+#else
+        tg->origin = device->mesh->origin;
+#endif
         tg->id = tg_id;
         tg->grid_id = grid_id;
         tg->grid_dim = grid_dim;
@@ -677,11 +688,12 @@ static int hb_mc_tile_group_enqueue (hb_mc_device_t* device,
                         
         device->num_tile_groups += 1;
         
-        bsg_pr_dbg("%s: Grid %d: %dx%d tile group (%d,%d) initialized.\n", 
+        bsg_pr_dbg("%s: Grid %d: %dx%d tile group (%d,%d) at (%d,%d) initialized.\n", 
                    __func__,
                    tg->grid_id,
                    hb_mc_dimension_get_x(tg->dim), hb_mc_dimension_get_y(tg->dim),
-                   hb_mc_coordinate_get_x(tg->id), hb_mc_coordinate_get_y(tg->id)) ;
+                   hb_mc_coordinate_get_x(tg->id), hb_mc_coordinate_get_y(tg->id),
+                   hb_mc_coordinate_get_x(tg->origin), hb_mc_coordinate_get_y(tg->origin));
 
         return HB_MC_SUCCESS;
 }
@@ -1044,6 +1056,9 @@ static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
 #elif SMU_XCEL
         // PP: we need to exclude the bottom right tile from the tile list
         *len = hb_mc_dimension_to_length(dim)-1;
+#elif SMU_XCEL_5050
+        // PP: we need to exclude all columns of even coordinates
+        *len = hb_mc_dimension_to_length(dim)/2;
 #else
         // PP: extra columns/rows have been accounted for when device->mesh->dim
         // got initialized
@@ -1055,6 +1070,19 @@ static int hb_mc_get_tile_list_len (hb_mc_device_t *device, uint32_t *len) {
 
 
 static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coordinate_t *lst) {
+#ifdef SMU_XCEL_5050
+        // PP: only include compute tiles (columns of odd coordinates)
+        size_t lst_idx = 0;
+        for (int tile_id = 1; tile_id < len*2; tile_id += 2) {
+
+            bsg_pr_dbg("%s: tid = %d\n", __func__, tile_id);
+            bsg_pr_dbg("%s: cord.y = %d, cord.x = %d\n",
+                __func__, device->mesh->tiles[tile_id].coord.y, device->mesh->tiles[tile_id].coord.x);
+
+            lst[lst_idx] = device->mesh->tiles[tile_id].coord;
+            lst_idx++;
+        }
+#else
         // PP: If the device mesh dimension and tile list lenght are correctly set,
         // there should be nothing to change in this function.
         for (int tile_id = 0; tile_id < len; tile_id ++) {
@@ -1065,6 +1093,7 @@ static int hb_mc_get_tile_list (hb_mc_device_t *device, uint32_t len, hb_mc_coor
 
             lst[tile_id] = device->mesh->tiles[tile_id].coord;
         }
+#endif
         return HB_MC_SUCCESS;
 }
 

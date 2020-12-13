@@ -106,6 +106,7 @@ INDEPENDENT_TESTS += test_cgra_xcel
 INDEPENDENT_TESTS += test_vec_add_toplevel_xcel
 INDEPENDENT_TESTS += test_smu_xcel
 INDEPENDENT_TESTS += test_smu_toplevel_xcel
+INDEPENDENT_TESTS += test_smu_xcel_5050
 
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
@@ -129,6 +130,10 @@ else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_xcel)
 	# This config instantiates SMU in the bottom right corner
 	DEFINES     += -DSMU_XCEL
 	LIB_DEFINES =  -DSMU_XCEL
+else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_xcel_5050)
+	# This config instantiates SMU in the bottom right corner
+	DEFINES     += -DSMU_XCEL_5050
+	LIB_DEFINES =  -DSMU_XCEL_5050
 else ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),smu_toplevel_xcel)
 	# This config describes the custom HB top level that has SMUs
 	# The first and last column and row in the manycore toplevel are used for SMUs
