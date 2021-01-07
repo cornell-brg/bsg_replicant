@@ -25,7 +25,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "test_smu_xcel_5050.h"
+#include "test_smu_xcel_5050.hpp"
 
 #define ALLOC_NAME "default_allocator"
 
@@ -47,7 +47,7 @@ int kernel_smu_xcel_5050 (int argc, char **argv) {
 
         bsg_pr_test_info("Running the CUDA 50/50 SMU Xcel Kernel on one 9x18 manycore.\n\n");
 
-        srand(time);
+        srand(0);
 
         /*****************************************************************************************************************
         * Define path to binary.
@@ -73,7 +73,7 @@ int kernel_smu_xcel_5050 (int argc, char **argv) {
         ******************************************************************************************************************/
 
         // PP: since the accelerator will do the work a 1x1 tile group should be enough?
-        hb_mc_dimension_t tg_dim = { .x = 2, .y = 2};
+        hb_mc_dimension_t tg_dim = { .x = 16, .y = 8};
 
         hb_mc_dimension_t grid_dim = { .x = 1, .y = 1};
 
@@ -82,7 +82,7 @@ int kernel_smu_xcel_5050 (int argc, char **argv) {
         * Prepare list of input arguments for kernel.
         ******************************************************************************************************************/
 
-        int cuda_argv[0] = {};
+        uint32_t cuda_argv[0] = {};
 
         /*****************************************************************************************************************
         * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments

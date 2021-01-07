@@ -69,8 +69,12 @@ DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE
 ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),python)
 	# This config describes the custom HB top level that has SMUs
 	# The first and last column and row in the manycore toplevel are used for SMUs
+
 	DEFINES     += -DSMU_TOPLEVEL_XCEL
 	LIB_DEFINES =  -DSMU_TOPLEVEL_XCEL
+
+	# DEFINES     += -DSMU_XCEL_5050
+	# LIB_DEFINES =  -DSMU_XCEL_5050
 endif
 
 CDEFINES   += $(DEFINES)

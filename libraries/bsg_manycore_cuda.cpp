@@ -473,7 +473,8 @@ static int hb_mc_tile_group_initialize_tiles (hb_mc_device_t *device,
 
 #if defined(SMU_XCEL_5050)
         tg->origin = origin;
-        tg->origin.x = tg->origin.x+1;
+        // PP: hardcode x cord to be 1
+        tg->origin.x = 1;
 #else
         tg->origin = origin;
 #endif
@@ -490,10 +491,17 @@ static int hb_mc_tile_group_initialize_tiles (hb_mc_device_t *device,
 
 
         // Define a list of tiles who's configuration symbols are to be set
+#ifdef SMU_XCEL_5050
+        uint32_t num_tiles = 0;
+        hb_mc_get_tile_list_len(device, &num_tiles); 
+#else
         uint32_t num_tiles = hb_mc_dimension_to_length(tg->dim); 
+#endif
         hb_mc_coordinate_t tile_list[num_tiles];
         
         hb_mc_idx_t tg_tile_id = 0;
+
+        bsg_pr_dbg("%s: generating tile group tile list. len=%d...\n", __func__, num_tiles);     
 
         // Set tiles variables inside hb_mc_device_t struct
         // And prepare a list of tile coordinates who's config symbols are to be set 
@@ -501,15 +509,28 @@ static int hb_mc_tile_group_initialize_tiles (hb_mc_device_t *device,
              x < hb_mc_coordinate_get_x(origin) + hb_mc_dimension_get_x(tg->dim); x++){
                 for (hb_mc_idx_t y = hb_mc_coordinate_get_y(origin);
                      y < hb_mc_coordinate_get_y(origin) + hb_mc_dimension_get_y(tg->dim); y++){
+
                         hb_mc_idx_t device_tile_id = hb_mc_get_tile_id (device->mesh->origin, device->mesh->dim, hb_mc_coordinate(x, y));
 
+#ifdef SMU_XCEL_5050
+                        // PP: skip all SMU columns
+                        if ( x % 2 == 0 ) continue;
+#endif
+
+#ifdef SMU_XCEL_5050
                         device->mesh->tiles[device_tile_id].origin = origin;
+                        device->mesh->tiles[device_tile_id].origin.x = 1;
+#else
+                        device->mesh->tiles[device_tile_id].origin = origin;
+#endif
                         device->mesh->tiles[device_tile_id].tile_group_id = tg->id;
                         device->mesh->tiles[device_tile_id].status = HB_MC_TILE_STATUS_BUSY;
 
-
                         tile_list[tg_tile_id] = hb_mc_coordinate (x, y); 
                         tg_tile_id ++;
+
+                        bsg_pr_dbg("%s: tile_list[%d]=(%d,%d); tiles[%d].origin=(%d,%d), tg_id=%d\n",
+                            __func__, tg_tile_id, x, y, device_tile_id, origin.x, origin.y, tg->id );     
                 }
         }
 
@@ -650,7 +671,12 @@ static int hb_mc_tile_group_enqueue (hb_mc_device_t* device,
         
 
         hb_mc_tile_group_t* tg = &device->tile_groups[device->num_tile_groups];
+#if defined(SMU_XCEL_5050)
         tg->dim = dim;
+        /* tg->dim.x = 15; */
+#else
+        tg->dim = dim;
+#endif
 #if defined(SMU_XCEL_5050)
         tg->origin = device->mesh->origin;
         // PP: first column in 50/50 SMU is a column of SMUs
@@ -801,7 +827,12 @@ static int hb_mc_tile_group_launch (hb_mc_device_t *device,
 
 
         // Create a list of tile coordinates for tiles inside tile group 
+#ifdef SMU_XCEL_5050
+        uint32_t num_tiles = 0;
+        hb_mc_get_tile_list_len(device, &num_tiles); 
+#else
         uint32_t num_tiles = hb_mc_dimension_to_length(tg->dim); 
+#endif
         hb_mc_coordinate_t tile_list[num_tiles];
 
         int tg_tile_id = 0;
@@ -809,8 +840,17 @@ static int hb_mc_tile_group_launch (hb_mc_device_t *device,
                 y < hb_mc_coordinate_get_y(tg->origin) + hb_mc_dimension_get_y(tg->dim); y++){
                 for (   hb_mc_idx_t x = hb_mc_coordinate_get_x(tg->origin);
                         x < hb_mc_coordinate_get_x(tg->origin) + hb_mc_dimension_get_x(tg->dim); x++){
+
+#ifdef SMU_XCEL_5050
+                        // PP: exclude SMU columns
+                        if ( x % 2 == 0 ) continue;
+#endif
+
                         tile_list[tg_tile_id] = hb_mc_coordinate (x, y); 
                         tg_tile_id ++;
+
+                        bsg_pr_dbg("%s: tile_list[%d]=(%d,%d)\n",
+                            __func__, tg_tile_id, x, y );     
                 }
         }
         
@@ -866,7 +906,12 @@ static int hb_mc_tile_group_deallocate_tiles(hb_mc_device_t *device,
                 for (   int y = hb_mc_coordinate_get_y(tg->origin);
                         y < hb_mc_coordinate_get_y(tg->origin) + hb_mc_dimension_get_y(tg->dim); y++){
                         tile_id = hb_mc_get_tile_id (device->mesh->origin, device->mesh->dim, hb_mc_coordinate (x, y));  
-                        
+
+#ifdef SMU_XCEL_5050
+                        // PP: exclude SMU columns
+                        if ( x % 2 == 0 ) continue;
+#endif
+
                         device->mesh->tiles[tile_id].origin = device->mesh->origin;
                         device->mesh->tiles[tile_id].tile_group_id = hb_mc_coordinate( 0, 0);
                         device->mesh->tiles[tile_id].status = HB_MC_TILE_STATUS_FREE;
