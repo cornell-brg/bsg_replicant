@@ -80,8 +80,9 @@ LDFLAGS        += -lbsg_manycore_runtime -lm
 LDFLAGS        += -L$(BSG_PLATFORM_PATH) -Wl,-rpath=$(BSG_PLATFORM_PATH)
 
 VCS_LDFLAGS    += $(foreach def,$(LDFLAGS),-LDFLAGS "$(def)")
-VCS_VFLAGS     += -M -L -ntb_opts tb_timescale=1ps/1ps -lca -v2005
-VCS_VFLAGS     += -timescale=1ps/1ps -sverilog -full64 -licqueue -q
+# VCS 2020.12: -timescale has to be supplied before -ntb_opts tb_timescale
+VCS_VFLAGS     += -M -L -timescale=1ps/1ps -ntb_opts tb_timescale=1ps/1ps -lca -v2005
+VCS_VFLAGS     += -sverilog -full64 -licqueue -q
 VCS_VFLAGS     += +warn=noLCA_FEATURES_ENABLED
 VCS_VFLAGS     += +warn=noMC-FCNAFTMI
 VCS_VFLAGS     += +lint=all,TFIPC-L,noSVA-UA,noSVA-NSVU,noVCDE,noSVA-AECASR
@@ -94,14 +95,14 @@ VCS_VFLAGS     += -msg_config=$(BSG_PLATFORM_PATH)/msg_config
 # otherwise make doesn't match the latter target(s)
 %: %.o $(BSG_MACHINE_PATH)/$(BSG_PLATFORM)/vcs_simlibs/manycore_tb_top/AN.DB $(BSG_PLATFORM_PATH)/libbsg_manycore_runtime.so $(BSG_PLATFORM_PATH)/msg_config
 	SYNOPSYS_SIM_SETUP=$(BSG_MACHINE_PATH)/$(BSG_PLATFORM)/synopsys_sim.setup \
-	vcs manycore_tb_top $< $(VCS_LDFLAGS) $(VCS_VFLAGS) \
+	vcs $< $(VCS_LDFLAGS) $(VCS_VFLAGS) -top manycore_tb_top \
 		-Mdirectory=$@.tmp -o $@ -l $@.vcs.log
 
 %.debug: VCS_VFLAGS += -debug_pp
 %.debug: VCS_VFLAGS += +plusarg_save +vcs+vcdpluson +vcs+vcdplusmemon +memcbk
 %.debug: %.o $(BSG_MACHINE_PATH)/$(BSG_PLATFORM)/vcs_simlibs/manycore_tb_top/AN.DB $(BSG_PLATFORM_PATH)/libbsg_manycore_runtime.so $(BSG_PLATFORM_PATH)/msg_config
 	SYNOPSYS_SIM_SETUP=$(BSG_MACHINE_PATH)/$(BSG_PLATFORM)/synopsys_sim.setup \
-	vcs manycore_tb_top $< $(VCS_LDFLAGS) $(VCS_VFLAGS) \
+	vcs $< $(VCS_LDFLAGS) $(VCS_VFLAGS) -top manycore_tb_top \
 		-Mdirectory=$@.tmp -o $@ -l $@.vcs.log
 
 .PHONY: platform.link.clean
