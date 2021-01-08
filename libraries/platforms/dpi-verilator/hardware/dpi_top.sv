@@ -113,7 +113,8 @@ module manycore_tb_top
 
   bsg_nonsynth_reset_gen #(
     .num_clocks_p(1)
-    ,.reset_cycles_lo_p(0)
+    ,.reset_cycles_lo_p(1)
+    /* ,.reset_cycles_lo_p(0) */
     ,.reset_cycles_hi_p(16)
   ) reset_gen (
     .clk_i(core_clk)
