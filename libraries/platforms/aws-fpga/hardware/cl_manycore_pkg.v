@@ -17,8 +17,16 @@ package cl_manycore_pkg;
   parameter data_width_p = `CL_MANYCORE_DATA_WIDTH;
   parameter num_tiles_x_p = `CL_MANYCORE_DIM_X;
   parameter num_tiles_y_p = `CL_MANYCORE_DIM_Y;
+
+  // PP: if using e_manycore_dual_cgra_hb_tapeout, there will an extra column
+  `ifdef HB_TAPEOUT_COMPOSITION
+  parameter x_cord_width_p = `BSG_SAFE_CLOG2(num_tiles_x_p+1);
+  `else
   parameter x_cord_width_p = `BSG_SAFE_CLOG2(num_tiles_x_p);
+  `endif
+
   parameter y_cord_width_p = `BSG_SAFE_CLOG2(num_tiles_y_p+3);
+
   parameter dmem_size_p = 1024;
   parameter icache_entries_p = 1024;
   parameter icache_tag_width_p = 12;

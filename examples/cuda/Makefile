@@ -108,6 +108,8 @@ INDEPENDENT_TESTS += test_smu_xcel
 INDEPENDENT_TESTS += test_smu_toplevel_xcel
 INDEPENDENT_TESTS += test_smu_xcel_5050
 
+INDEPENDENT_TESTS += test_cgra_xcel_hb_tapeout
+
 # REGRESSION_TESTS is a list of all regression tests to run.
 REGRESSION_TESTS = $(UNIFIED_TESTS) $(INDEPENDENT_TESTS)
 

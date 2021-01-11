@@ -296,33 +296,80 @@ module manycore_tb_top
 
     // Horizontal Tie-Offs
     //
-    for (genvar i = 0; i < num_tiles_y_p+1; i++) begin
+    if ( mc_composition_p == e_manycore_dual_cgra_hb_tapeout ) begin
+
+      // Instantiate a CGRA xcel pod on the east side of the manycore.
+      // Connect two pods through the links between them.
+      brg_8x8_cgra_xcel_pod
+      #(
+        .x_cord_width_p(x_cord_width_p)
+       ,.y_cord_width_p(y_cord_width_p)
+       ,.data_width_p(data_width_p)
+       ,.addr_width_p(addr_width_p)
+       ,.dmem_size_p (dmem_size_p )
+       ,.vcache_size_p(vcache_size_p)
+       ,.vcache_block_size_in_words_p(block_size_in_words_p)
+       ,.vcache_sets_p(sets_p)
+       ,.mc_composition_p(mc_composition_p)
+       ,.icache_entries_p(icache_entries_p)
+       ,.icache_tag_width_p (icache_tag_width_p)
+       ,.max_out_credits_p(max_out_credits_p)
+       ,.num_tiles_x_p(num_tiles_x_p)
+       ,.num_tiles_y_p(num_tiles_y_p)
+      ) cgra_xcel_pod (
+        .clk_i(core_clk)
+       ,.reset_i(core_reset)
+       ,.link_sif_i(hor_link_sif_lo[E][num_tiles_y_p:1])
+       ,.link_sif_o(hor_link_sif_li[E][num_tiles_y_p:1])
+       ,.my_x_i(x_cord_width_p'(num_tiles_x_p))
+       ,.my_y_i(y_cord_width_p'(2))
+      );
+
+      // Only tie off the link from the IO router row
       bsg_manycore_link_sif_tieoff #(
         .addr_width_p(addr_width_p)
         ,.data_width_p(data_width_p)
         ,.x_cord_width_p(x_cord_width_p)
         ,.y_cord_width_p(y_cord_width_p)
-      ) tieoff_w (
+      ) tieoff_e (
         .clk_i(core_clk)
         ,.reset_i(core_reset)
-        ,.link_sif_i(hor_link_sif_lo[W][i])
-        ,.link_sif_o(hor_link_sif_li[W][i])
+        ,.link_sif_i(hor_link_sif_lo[E][0])
+        ,.link_sif_o(hor_link_sif_li[E][0])
       );
+
+    end else begin
+
+      // Regular DPI top level
+      for (genvar i = 0; i < num_tiles_y_p+1; i++) begin
+        bsg_manycore_link_sif_tieoff #(
+          .addr_width_p(addr_width_p)
+          ,.data_width_p(data_width_p)
+          ,.x_cord_width_p(x_cord_width_p)
+          ,.y_cord_width_p(y_cord_width_p)
+        ) tieoff_e (
+          .clk_i(core_clk)
+          ,.reset_i(core_reset)
+          ,.link_sif_i(hor_link_sif_lo[E][i])
+          ,.link_sif_o(hor_link_sif_li[E][i])
+        );
+     end
+
     end
 
-     for (genvar i = 0; i < num_tiles_y_p+1; i++) begin
-       bsg_manycore_link_sif_tieoff #(
-         .addr_width_p(addr_width_p)
-         ,.data_width_p(data_width_p)
-         ,.x_cord_width_p(x_cord_width_p)
-         ,.y_cord_width_p(y_cord_width_p)
-       ) tieoff_e (
-         .clk_i(core_clk)
-         ,.reset_i(core_reset)
-         ,.link_sif_i(hor_link_sif_lo[E][i])
-         ,.link_sif_o(hor_link_sif_li[E][i])
-       );
-     end
+    for (genvar i = 0; i < num_tiles_y_p+1; i++) begin
+        bsg_manycore_link_sif_tieoff #(
+          .addr_width_p(addr_width_p)
+          ,.data_width_p(data_width_p)
+          ,.x_cord_width_p(x_cord_width_p)
+          ,.y_cord_width_p(y_cord_width_p)
+        ) tieoff_w (
+          .clk_i(core_clk)
+          ,.reset_i(core_reset)
+          ,.link_sif_i(hor_link_sif_lo[W][i])
+          ,.link_sif_o(hor_link_sif_li[W][i])
+        );
+    end
 
   end
 

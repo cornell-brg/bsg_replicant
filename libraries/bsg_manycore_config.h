@@ -49,9 +49,9 @@
 #include <math.h>
 #endif
 
-#if !defined(SMU_TOPLEVEL_XCEL) && !defined(SMU_XCEL_5050)
-static_assert(false, "SMU_TOPLEVEL_XCEL or SMU_XCEL_5050 not defined!");
-#endif
+/* #if !defined(SMU_TOPLEVEL_XCEL) && !defined(SMU_XCEL_5050) */
+/* static_assert(false, "SMU_TOPLEVEL_XCEL or SMU_XCEL_5050 not defined!"); */
+/* #endif */
 
 #ifdef __cplusplus
 extern "C" {
