@@ -38,8 +38,14 @@
 
 #include "cuda_tests.h"
 
-#include "test_cgra_vvadd.bstrm"
-#include "test_cgra_vvadd.ref"
+/* #include "test_cgra_vvadd.bstrm" */
+/* #include "test_cgra_vvadd.ref" */
+
+/* #include "test_cgra_int_os_gemm.bstrm" */
+/* #include "test_cgra_int_os_gemm.ref" */
+
+#include "test_cgra_fp32_os_gemm.bstrm"
+#include "test_cgra_fp32_os_gemm.ref"
 
 
 #endif

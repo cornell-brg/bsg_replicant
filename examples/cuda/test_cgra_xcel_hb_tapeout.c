@@ -74,7 +74,7 @@ int kernel_cgra_xcel_hb_tapeout (int argc, char **argv) {
 
         bsg_pr_test_info("Allocating memory for bitstream and arguments\n");
 
-        uint32_t bstrm_size = VVADD_BITSTREAM_SIZE;
+        uint32_t bstrm_size = FP32_OS_GEMM_BITSTREAM_SIZE;
 
         eva_t bstrm_device; 
 
@@ -86,11 +86,11 @@ int kernel_cgra_xcel_hb_tapeout (int argc, char **argv) {
 
         // Allocate space for the arguments
 
-        uint32_t inst_size = VVADD_INSTRUCTION_SIZE;
-        uint32_t arg_size = VVADD_CONFIG_INSTRUCTION_SIZE;
-        uint32_t result_size = VVADD_REF_SIZE;
+        uint32_t inst_size = FP32_OS_GEMM_INSTRUCTION_SIZE;
+        uint32_t arg_size = FP32_OS_GEMM_CONFIG_INSTRUCTION_SIZE;
+        uint32_t result_size = FP32_OS_GEMM_REF_SIZE;
 
-        int verif_base_addr = VVADD_VERIF_BASE_ADDR;
+        int verif_base_addr = FP32_OS_GEMM_VERIF_BASE_ADDR;
 
         eva_t inst_device, arg0_device, arg1_device, arg2_device, arg3_device,
               result_device;
