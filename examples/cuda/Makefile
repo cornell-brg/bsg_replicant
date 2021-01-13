@@ -162,6 +162,14 @@ CUDALITE_SRC_PATH = $(SPMD_SRC_PATH)/bsg_cuda_lite_runtime
 KERNEL_PATH=$(CUDALITE_SRC_PATH)/$(subst test_,,$(TEST_NAME))/main.riscv
 C_ARGS = $(KERNEL_PATH) $(TEST_NAME)
 
+#-------------------------------------------------------------------------
+# PP: customize CGRA xcel kernel target. If you comment out these lines
+# the kernel will run all test cases.
+#-------------------------------------------------------------------------
+# ifeq ($(subst test_,,$(basename $(MAKECMDGOALS))),cgra_xcel_hb_tapeout)
+# 	C_ARGS += test_vvadd_8x8 test_os_gemm_int
+# endif
+
 # flow.mk defines all of the host compilationk, link, and execution rules
 include $(EXAMPLES_PATH)/flow.mk
 

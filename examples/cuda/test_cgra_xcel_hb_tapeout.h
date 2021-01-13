@@ -36,16 +36,34 @@
 #include <time.h>
 #include <stdlib.h>
 
+#include <dirent.h>
+
 #include "cuda_tests.h"
 
-/* #include "test_cgra_vvadd.bstrm" */
-/* #include "test_cgra_vvadd.ref" */
+#define CGRA_TEST_VECTOR_PATH ("../cgra_test_vectors/")
 
-/* #include "test_cgra_int_os_gemm.bstrm" */
-/* #include "test_cgra_int_os_gemm.ref" */
+typedef struct TestVectorStruct {
+  // Sizes
+  int bitstream_size;
+  int instruction_size;
+  int config_instruction_size;
+  int verif_base_addr;
+  int reference_size;
 
-#include "test_cgra_fp32_os_gemm.bstrm"
-#include "test_cgra_fp32_os_gemm.ref"
+  // Configuration and data
+  int* bitstream;
+  int* instructions;
+  int* arg0;
+  int* arg1;
+  int* arg2;
+  int* arg3;
+  int* reference;
+} TestVector;
 
+typedef struct TestListStruct {
+  int num_tests;
+  char** test_names;
+  TestVector** test_vectors;
+} TestList;
 
 #endif
