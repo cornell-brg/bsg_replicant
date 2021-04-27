@@ -122,6 +122,8 @@ $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wall -Werror
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-unused-variable
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-unused-function
 $(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-unused-but-set-variable
+	# PP: workaround to compilation error
+$(LIB_STRICT_OBJECTS): CXXFLAGS += -Wno-maybe-uninitialized
 
 $(BSG_PLATFORM_PATH)/libbsg_manycore_runtime.so.1.0: LD = $(CXX)
 $(BSG_PLATFORM_PATH)/libbsg_manycore_runtime.so.1.0: $(LIB_OBJECTS)

@@ -53,6 +53,11 @@ VDEFINES += BSG_MACHINE_ORIGIN_X_CORD=$(BSG_MACHINE_ORIGIN_COORD_X)
 VDEFINES += BSG_MACHINE_ORIGIN_Y_CORD=$(BSG_MACHINE_ORIGIN_COORD_Y)
 VDEFINES += HOST_MODULE_PATH=replicant_tb_top
 VDEFINES += BSG_MACHINE_DRAMSIM3_PKG=$(BSG_MACHINE_MEM_DRAMSIM3_PKG)
+
+# PP: enable behavioral model of SRAMs
+VDEFINES += BRG_RTL_HARD_SIM
+VDEFINES += ARM_UD_MODEL
+
 VLOGAN_SOURCES  += $(VHEADERS) $(VSOURCES)
 VLOGAN_INCLUDES += $(foreach inc,$(VINCLUDES),+incdir+"$(inc)")
 VLOGAN_DEFINES  += $(foreach def,$(VDEFINES),+define+"$(def)")
@@ -97,8 +102,12 @@ LDFLAGS += -lbsg_manycore_runtime -lm
 LDFLAGS += -L$(BSG_PLATFORM_PATH) -Wl,-rpath=$(BSG_PLATFORM_PATH)
 
 VCS_LDFLAGS += $(foreach def,$(LDFLAGS),-LDFLAGS "$(def)")
-VCS_VFLAGS  += -M -L -ntb_opts tb_timescale=1ps/1ps -lca
-VCS_VFLAGS  += -timescale=1ps/1ps -sverilog -full64 -licqueue -q
+# PP: need this for vcs2020
+# VCS_VFLAGS  += -M -L -ntb_opts tb_timescale=1ps/1ps -lca
+# VCS_VFLAGS  += -timescale=1ps/1ps -sverilog -full64 -licqueue -q
+VCS_VFLAGS  += -M -L -timescale=1ps/1ps -ntb_opts tb_timescale=1ps/1ps -lca -v2005
+VCS_VFLAGS  += -sverilog -full64 -licqueue -q
+
 VCS_VFLAGS  += +warn=noLCA_FEATURES_ENABLED
 VCS_VFLAGS  += +warn=noMC-FCNAFTMI
 VCS_VFLAGS  += +lint=all,TFIPC-L,noSVA-UA,noSVA-NSVU,noVCDE,noSVA-AECASR

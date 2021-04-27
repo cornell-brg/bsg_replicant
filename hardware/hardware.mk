@@ -302,6 +302,8 @@ hardware.clean:
 	rm -f $(BSG_MACHINE_PATH)/bsg_bladerunner_configuration.v
 	rm -f $(BSG_MACHINE_PATH)/bsg_tag_boot_rom.tr
 	rm -f $(BSG_MACHINE_PATH)/bsg_tag_boot_rom.v
+	rm -f $(BSG_MACHINE_PATH)/cgra_hpod_trace.tr
+	rm -f $(BSG_MACHINE_PATH)/cgra_hpod_rom.v
 
 .PRECIOUS: $(BSG_MACHINE_PATH)/bsg_bladerunner_configuration.rom
 .PRECIOUS: $(BSG_MACHINE_PATH)/bsg_bladerunner_pkg.v
