@@ -218,6 +218,10 @@ module replicant_tb_top
        ,.hetero_type_vec_p(bsg_machine_hetero_type_vec_gp)
 
        ,.reset_depth_p(reset_depth_lp)
+
+       // PP: 0 -- a pure manycore composition
+       //     1 -- a manycore + CGRA composition
+       ,.bsg_manycore_composition(1)
        )
    testbench
      (
