@@ -89,6 +89,9 @@ module replicant_tb_top
    // Clock generator period
    localparam lc_cycle_time_ps_lp = 1000;
 
+   // PP: CGRA half pod clock period
+   parameter cgra_xcel_clk_period_p = 1500;
+
    // Reset generator depth
    localparam reset_depth_lp = 3;
 
@@ -156,6 +159,17 @@ module replicant_tb_top
    core_clk_gen
      (.o(bit_clk));
    assign core_clk = bit_clk;
+
+  bit cgra_xcel_clk;
+
+`ifdef VERILATOR
+   bsg_nonsynth_dpi_clock_gen
+`else
+   bsg_nonsynth_clock_gen
+`endif
+     #(.cycle_time_p(cgra_xcel_clk_period_p))
+   cgra_xcel_clk_gen
+     (.o(cgra_xcel_clk));
 
    bsg_nonsynth_reset_gen
      #(
@@ -226,6 +240,7 @@ module replicant_tb_top
    testbench
      (
       .clk_i(core_clk)
+      ,.cgra_xcel_clk_i(cgra_xcel_clk)
       ,.reset_i(core_reset)
 
       ,.io_link_sif_i(host_link_sif_li)
