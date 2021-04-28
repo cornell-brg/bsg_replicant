@@ -55,8 +55,9 @@ VDEFINES += HOST_MODULE_PATH=replicant_tb_top
 VDEFINES += BSG_MACHINE_DRAMSIM3_PKG=$(BSG_MACHINE_MEM_DRAMSIM3_PKG)
 
 # PP: enable behavioral model of SRAMs
-VDEFINES += BRG_RTL_HARD_SIM
-VDEFINES += ARM_UD_MODEL
+# Update: we don't need this for RTL-soft sims
+# VDEFINES += BRG_RTL_HARD_SIM
+# VDEFINES += ARM_UD_MODEL
 
 VLOGAN_SOURCES  += $(VHEADERS) $(VSOURCES)
 VLOGAN_INCLUDES += $(foreach inc,$(VINCLUDES),+incdir+"$(inc)")
