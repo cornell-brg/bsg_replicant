@@ -91,7 +91,7 @@ int verify_fft (float complex *out, int N) {
 }
 
 
-int kernel_unopt_single_fft (int argc, char **argv) {
+int kernel_opt_single_fft (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -170,7 +170,7 @@ int kernel_unopt_single_fft (int argc, char **argv) {
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
 
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_unopt_single_fft", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_opt_single_fft", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -208,4 +208,4 @@ int kernel_unopt_single_fft (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_unopt_single_fft", kernel_unopt_single_fft);
+declare_program_main("test_opt_single_fft", kernel_opt_single_fft);
