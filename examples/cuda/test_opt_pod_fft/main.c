@@ -77,15 +77,15 @@ int verify_fft (float complex *out, int N) {
         for (int i = 0; i < N; i++) {
             float complex o = out[j*N+i];
             double complex ref = 0.0;
-            bsg_pr_test_info("%d-th component is %.3f+%.3fi\n", i, crealf(o), cimagf(o));
+            /* bsg_pr_test_info("Batch %d: %d-th component is %.3f+%.3fi\n", j, i, crealf(o), cimagf(o)); */
             if ((i == r) || (i == ar)) {
                 ref = N/2.0;
             } else {
                 ref = 0.0;
             }
             if (!is_close(o, ref)) {
-                bsg_pr_err(BSG_RED("Mismatch: ") "out[%d]: %.3f+%.3fi; ref is %.3f+%.3fi",
-                           i , crealf(o), cimagf(o), crealf(ref), cimagf(ref));
+                bsg_pr_err(BSG_RED("Mismatch: ") "Batch %d: out[%d]: %.3f+%.3fi; ref is %.3f+%.3fi",
+                           j, i , crealf(o), cimagf(o), crealf(ref), cimagf(ref));
                 return 1;
             }
         }
@@ -94,7 +94,7 @@ int verify_fft (float complex *out, int N) {
 }
 
 
-int kernel_unopt_pod_fft (int argc, char **argv) {
+int kernel_opt_pod_fft (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -142,10 +142,12 @@ int kernel_unopt_pod_fft (int argc, char **argv) {
                     }
                 }
 
-                for (int i = 0; i < N; i++) {
-                    float rr = crealf(A_host[i]), ii = cimagf(A_host[i]);
-                    bsg_pr_info("%d-th item is %.3f+%.3fi (0x%08X 0x%08X)\n", i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii);
-                }
+                /* for (int j = 0; j < 128; j++) { */
+                /*     for (int i = 0; i < N; i++) { */
+                /*         float rr = crealf(A_host[i]), ii = cimagf(A_host[i]); */
+                /*         bsg_pr_info("Batch %d: %d-th item is %.3f+%.3fi (0x%08X 0x%08X)\n", j, i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii); */
+                /*     } */
+                /* } */
 
                 /*****************************************************************************************************************
                  * Copy A from host onto device DRAM.
@@ -175,7 +177,7 @@ int kernel_unopt_pod_fft (int argc, char **argv) {
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
 
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_unopt_pod_fft", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_opt_pod_fft", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -213,4 +215,4 @@ int kernel_unopt_pod_fft (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_unopt_pod_fft", kernel_unopt_pod_fft);
+declare_program_main("test_opt_pod_fft", kernel_opt_pod_fft);
