@@ -42,11 +42,14 @@
 
 #define ALLOC_NAME "default_allocator"
 
+// Do a 256x256 point FFT using four-step method
+
 // Generated input: cos(n*pi/8)
 // This signal is known to have only two pulses of magnitude N/2 at N/16 and
 // 15*N/16
 /* #define NUM_POINTS 16 */
-#define NUM_POINTS 256
+/* #define NUM_POINTS 256 */
+#define NUM_POINTS (256*256)
 
 /*!
  * Runs FFT.
@@ -71,7 +74,7 @@ int verify_fft (float complex *out, int N) {
     int ar = N - r;
     for (int i = 0; i < N; i++) {
         float rr = crealf(out[i]), ii = cimagf(out[i]);
-        bsg_pr_info("%d-th result is %.6f+%.6fi (0x%08X 0x%08X)\n", i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii);
+        bsg_pr_test_info("%d-th result is %.6f+%.6fi (0x%08X 0x%08X)\n", i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii);
     }
     for (int i = 0; i < N; i++) {
         double complex ref = 0.0;
@@ -100,7 +103,7 @@ int kernel_tg_dram_fft (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the CUDA FFT Kernel on one 1x1 tile group.\n\n");
+        bsg_pr_test_info("Running the CUDA FFT Kernel on one 8x16 tile group.\n\n");
 
         srand(time); 
 
@@ -134,12 +137,12 @@ int kernel_tg_dram_fft (int argc, char **argv) {
 
                 float complex A_host[N]; /* allocate A[N] on the host */
                 for (int i = 0; i < N; i++) { /* fill A with arbitrary data */
-                        A_host[i] = cosf(i*M_PI/8);
+                        A_host[i] = cosf(i*M_PI/8.0);
                 }
 
                 for (int i = 0; i < N; i++) {
                     float rr = crealf(A_host[i]), ii = cimagf(A_host[i]);
-                    bsg_pr_info("%d-th item is %.3f+%.3fi (0x%08X 0x%08X)\n", i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii);
+                    /* bsg_pr_info("%d-th item is %.3f+%.3fi (0x%08X 0x%08X)\n", i, rr, ii, *(uint32_t*)&rr, *(uint32_t*)&ii); */
                 }
 
                 /*****************************************************************************************************************
@@ -156,21 +159,21 @@ int kernel_tg_dram_fft (int argc, char **argv) {
                  * Calculate grid_dim_x/y: number of tile groups needed based on block_size_x/y
                  ******************************************************************************************************************/
 
-                uint32_t block_size_x = N;
-                hb_mc_dimension_t tg_dim = { .x = 1, .y = 1};
+                // NOTE: If you change NUM_POINTS you need to update the tg size accordingly
+                hb_mc_dimension_t tg_dim = { .x = 16, .y = 8};
                 hb_mc_dimension_t grid_dim = { .x = 1, .y = 1};
 
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
 
-                uint32_t cuda_argv[4] = {A_device, B_device, N, block_size_x};
+                uint32_t cuda_argv[3] = {A_device, B_device, N};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
 
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_tg_dram_fft", 4, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_tg_dram_fft", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
