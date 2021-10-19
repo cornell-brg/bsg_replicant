@@ -97,7 +97,7 @@ int verify_fft (float complex *out, int N) {
 }
 
 
-int kernel_tg_dram_fft (int argc, char **argv) {
+int kernel_fft_256x256_parallel_trans (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -176,7 +176,7 @@ int kernel_tg_dram_fft (int argc, char **argv) {
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
 
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_tg_dram_fft", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_fft_256x256_parallel_trans", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -214,4 +214,4 @@ int kernel_tg_dram_fft (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_tg_dram_fft", kernel_tg_dram_fft);
+declare_program_main("test_fft_256x256_parallel_trans", kernel_fft_256x256_parallel_trans);
