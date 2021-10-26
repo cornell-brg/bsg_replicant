@@ -152,9 +152,17 @@ int kernel_fft_256x256_all (int argc, char **argv) {
                  * Copy A from host onto device DRAM.
                  ******************************************************************************************************************/
 
-                void *dst = (void *) ((intptr_t) A_device);
-                void *src = (void *) &A_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(float complex), HB_MC_MEMCPY_TO_DEVICE)); /* Copy A to the device  */
+                /* void *dst = (void *) ((intptr_t) A_device); */
+                /* void *src = (void *) &A_host[0]; */
+
+                hb_mc_dma_htod_t htod_A_job = {
+                        .d_addr = A_device,
+                        .h_addr = (void *) &A_host[0],
+                        .size   = N * sizeof(float complex)
+                };
+
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod_A_job, 1));
+                /* BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(float complex), HB_MC_MEMCPY_TO_DEVICE)); /1* Copy A to the device  *1/ */
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -189,9 +197,17 @@ int kernel_fft_256x256_all (int argc, char **argv) {
                  ******************************************************************************************************************/
 
                 float complex B_host[N];
-                src = (void *) ((intptr_t) B_device);
-                dst = (void *) &B_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * sizeof(float complex), HB_MC_MEMCPY_TO_HOST)); /* copy B to the host */
+                /* src = (void *) ((intptr_t) B_device); */
+                /* dst = (void *) &B_host[0]; */
+                /* BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * sizeof(float complex), HB_MC_MEMCPY_TO_HOST)); /1* copy B to the host *1/ */
+
+                hb_mc_dma_dtoh_t dtoh_A_job = {
+                        .d_addr = B_device,
+                        .h_addr = (void *) &B_host[0],
+                        .size   = N * sizeof(float complex)
+                };
+
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh_A_job, 1));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
