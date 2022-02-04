@@ -335,7 +335,7 @@ static int tile_unfreeze(hb_mc_device_t *device, hb_mc_pod_t *pod, hb_mc_tile_t 
         // before unfreezing, clear kernel ptr
         uint32_t kernel_not_loaded = HB_MC_CUDA_KERNEL_NOT_LOADED_VAL;
         BSG_CUDA_CALL(tile_set_symbol_val(device, pod, tile, &default_map, "cuda_kernel_ptr", kernel_not_loaded));
-        BSG_MANYCORE_CALL(device->mc, hb_mc_tile_unfreeze(device->mc, &tile->coord));
+        // BSG_MANYCORE_CALL(device->mc, hb_mc_tile_unfreeze(device->mc, &tile->coord));
         return HB_MC_SUCCESS;
 }
 
@@ -825,6 +825,8 @@ int hb_mc_device_pod_program_load (hb_mc_device_t *device, hb_mc_pod_t *pod)
 
                 BSG_CUDA_CALL(tile_unfreeze(device, pod, tile));
         }
+        // only unfreeze the first one
+        BSG_MANYCORE_CALL(device->mc, hb_mc_tile_unfreeze(device->mc, &(pod->mesh->tiles->coord)));
 
         return HB_MC_SUCCESS;
 }
