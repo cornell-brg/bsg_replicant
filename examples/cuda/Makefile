@@ -87,11 +87,15 @@ TESTS += test_tracer
 TESTS += test_conv1d
 TESTS += test_conv2d
 TESTS += group_stride
+TESTS += test_appl_fib
+TESTS += test_appl_vvadd
+TESTS += test_appl_parallel_fib
 
 regression: $(TESTS)
 	@echo "CUDA REGRESSION PASSED"
 
 $(TESTS): $(REGRESSION_PREBUILD)
+	$(MAKE) -C $@ clean
 	$(MAKE) -C $@ regression
 
 clean: $(TESTS:=.clean) hardware.clean platform.clean libraries.clean link.clean
