@@ -30,7 +30,7 @@ int kernel_appl_fib (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the Fib WS Kernel on one 2x2 tile groups.\n\n");
+        bsg_pr_test_info("Running the Fib WS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         srand(time);
 
@@ -53,7 +53,7 @@ int kernel_appl_fib (int argc, char **argv) {
                  * Define tg_dim_x/y: number of tiles in each tile group
                  * Calculate grid_dim_x/y: number of tile groups needed based on block_size_x/y
                  ******************************************************************************************************************/
-                hb_mc_dimension_t tg_dim = { .x = 2, .y = 2};
+                hb_mc_dimension_t tg_dim = { .x = bsg_tiles_X, .y = bsg_tiles_Y};
                 hb_mc_dimension_t grid_dim = { .x = 1, .y = 1};
 
                 /*****************************************************************************************************************
