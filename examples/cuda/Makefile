@@ -45,52 +45,15 @@ include $(REPLICANT_PATH)/environment.mk
 include $(EXAMPLES_PATH)/link.mk
 
 # Define the tests that get run
-TESTS += test_binary_load_buffer
-TESTS += test_empty_parallel
-TESTS += test_multiple_binary_load
-TESTS += test_host_memset
-TESTS += test_stack_load
-TESTS += test_memory_leak
-TESTS += test_dram_load_store
-TESTS += test_dram_host_allocated
-TESTS += test_dram_device_allocated
-TESTS += test_device_memset
-TESTS += test_device_memcpy
-TESTS += test_vec_add
-TESTS += test_vec_add_dma
-TESTS += test_dma
-TESTS += test_vec_add_parallel
-TESTS += test_vec_add_parallel_multi_grid
-TESTS += test_vec_add_serial_multi_grid
-TESTS += test_vec_add_shared_mem
-TESTS += test_max_pool2d
-TESTS += test_shared_mem
-TESTS += test_shared_mem_load_store
-TESTS += test_matrix_mul
-TESTS += test_matrix_mul_shared_mem
-TESTS += test_high_mem
-TESTS += test_float_all_ops
-TESTS += test_float_vec_add
-TESTS += test_float_vec_add_shared_mem
-TESTS += test_float_vec_mul
-TESTS += test_float_vec_div
-TESTS += test_float_vec_exp
-TESTS += test_float_vec_sqrt
-TESTS += test_float_vec_log
-TESTS += test_float_matrix_mul
-TESTS += test_float_matrix_mul_shared_mem
-TESTS += test_softmax
-TESTS += test_log_softmax
-TESTS += test_hammer_cache
-#TESTS += test_profiler
-TESTS += test_tracer
-TESTS += test_conv1d
-TESTS += test_conv2d
+TESTS += test_appl_fib
+TESTS += test_appl_vvadd
+TESTS += test_appl_parallel_fib
 
 regression: $(TESTS)
 	@echo "CUDA REGRESSION PASSED"
 
 $(TESTS): $(REGRESSION_PREBUILD)
+	$(MAKE) -C $@ clean
 	$(MAKE) -C $@ regression
 
 clean: $(TESTS:=.clean) hardware.clean platform.clean libraries.clean link.clean
