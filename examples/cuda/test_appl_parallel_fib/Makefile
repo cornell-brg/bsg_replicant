@@ -52,11 +52,15 @@ KERNEL_NAME = appl-parallel-fib
 # Host code compilation flags and flow
 ###############################################################################
 
+# Tile Group Dimensions
+TILE_GROUP_DIM_X ?= 2
+TILE_GROUP_DIM_Y ?= 2
+
 # TEST_SOURCES is a list of source files that need to be compiled
 TEST_SOURCES = main.c
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
-CDEFINES +=
+CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
 CXXDEFINES +=
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
@@ -82,10 +86,6 @@ include $(EXAMPLES_PATH)/link.mk
 # BSG_MANYCORE_KERNELS is a list of manycore executables that should
 # be built before executing.
 BSG_MANYCORE_KERNELS = $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv
-
-# Tile Group Dimensions
-TILE_GROUP_DIM_X = 2
-TILE_GROUP_DIM_Y = 2
 
 $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv: $(BSG_MACHINE_PATH)/Makefile.machine.include
 	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
