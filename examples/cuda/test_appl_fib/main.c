@@ -12,8 +12,6 @@
 #include <bsg_manycore_regression.h>
 
 #define ALLOC_NAME "default_allocator"
-#define FIB_IN 10
-#define FIB_GSIZE 8
 
 /*!
  * Runs the vector addition a one 2x2 tile groups. Fib(N)
