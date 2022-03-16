@@ -19,7 +19,12 @@
  * Runs the vector addition a one 2x2 tile groups. Fib(N)
 */
 
-
+uint32_t host_fib(uint32_t n) {
+  if (n < 2)
+    return n;
+  else
+    return host_fib(n-1) + host_fib(n-2);
+}
 
 int kernel_appl_fib (int argc, char **argv) {
         int rc;
@@ -49,6 +54,13 @@ int kernel_appl_fib (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_init(&device, bin_path, ALLOC_NAME, 0));
 
                 /*****************************************************************************************************************
+                 * Allocate memory on the device.
+                 ******************************************************************************************************************/
+
+                eva_t device_result;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
+
+                /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
                  * Define tg_dim_x/y: number of tiles in each tile group
                  * Calculate grid_dim_x/y: number of tile groups needed based on block_size_x/y
@@ -61,12 +73,12 @@ int kernel_appl_fib (int argc, char **argv) {
                  ******************************************************************************************************************/
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;
-                int cuda_argv[2] = {N, gsize};
+                int cuda_argv[3] = {device_result, N, gsize};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_fib", 2, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_fib", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -74,9 +86,24 @@ int kernel_appl_fib (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_tile_groups_execute(&device));
 
                 /*****************************************************************************************************************
+                 * Copy result back from device DRAM into host memory.
+                 ******************************************************************************************************************/
+                uint32_t host_result[64];
+                void *src = (void *) ((intptr_t) device_result);;
+                void *dst = (void *) &host_result[0];
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+
+                /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
+
+                int32_t expected = host_fib(N);
+
+                if (host_result[0] != expected) {
+                  bsg_pr_err(BSG_RED("Mismatch: ") "fib %d = %d != expected %d\n", N, host_result[0], expected);
+                  return HB_MC_FAIL;
+                }
 
         }
         BSG_CUDA_CALL(hb_mc_device_finish(&device));
