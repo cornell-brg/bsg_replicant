@@ -52,6 +52,10 @@ KERNEL_NAME = appl-fib
 # Host code compilation flags and flow
 ###############################################################################
 
+# Fib inputs
+FIB_IN    ?= 10
+FIB_GSIZE ?= 8
+
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= 2
 TILE_GROUP_DIM_Y ?= 2
@@ -60,7 +64,7 @@ TILE_GROUP_DIM_Y ?= 2
 TEST_SOURCES = main.c
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
-CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
+CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -DFIB_IN=$(FIB_IN) -DFIB_GSIZE=$(FIB_GSIZE)
 CXXDEFINES +=
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
