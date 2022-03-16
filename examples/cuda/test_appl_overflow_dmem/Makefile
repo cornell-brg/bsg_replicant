@@ -53,8 +53,8 @@ KERNEL_NAME = appl-overflow-dmem
 ###############################################################################
 
 # Tile Group Dimensions
-TILE_GROUP_DIM_X ?= 2
-TILE_GROUP_DIM_Y ?= 2
+TILE_GROUP_DIM_X = 2
+TILE_GROUP_DIM_Y = 1
 
 # TEST_SOURCES is a list of source files that need to be compiled
 TEST_SOURCES = main.c
