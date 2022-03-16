@@ -48,6 +48,7 @@ include $(EXAMPLES_PATH)/link.mk
 TESTS += test_appl_fib
 TESTS += test_appl_vvadd
 TESTS += test_appl_parallel_fib
+TESTS += test_appl_overflow_dmem
 
 regression: $(TESTS)
 	@echo "CUDA REGRESSION PASSED"
