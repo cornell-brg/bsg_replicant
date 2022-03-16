@@ -90,6 +90,7 @@ TESTS += group_stride
 TESTS += test_appl_fib
 TESTS += test_appl_vvadd
 TESTS += test_appl_parallel_fib
+TESTS += test_appl_overflow_dmem
 
 regression: $(TESTS)
 	@echo "CUDA REGRESSION PASSED"
