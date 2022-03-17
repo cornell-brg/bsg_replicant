@@ -53,7 +53,7 @@ KERNEL_NAME = appl-nqueens
 ###############################################################################
 
 NQUEENS_IN    ?= 5
-NQUEENS_GSIZE ?= 2
+NQUEENS_GSIZE ?= 3
 
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= 2
