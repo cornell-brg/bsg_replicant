@@ -15,6 +15,11 @@
 #define FIB_IN 10
 #define FIB_GSIZE 4
 
+#define MAX_WORKERS 128
+#define HB_L2_CACHE_LINE_WORDS 16
+#define BUF_FACTOR 129
+#define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
+
 /*!
  * Runs the vector addition a one 2x2 tile groups. Fib(N)
 */
@@ -60,6 +65,9 @@ int kernel_appl_parallel_fib (int argc, char **argv) {
                 eva_t device_result;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
 
+                eva_t dram_buffer;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
                  * Define tg_dim_x/y: number of tiles in each tile group
@@ -73,12 +81,12 @@ int kernel_appl_parallel_fib (int argc, char **argv) {
                  ******************************************************************************************************************/
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;
-                int cuda_argv[3] = {device_result, N, gsize};
+                int cuda_argv[4] = {device_result, N, gsize, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_parallel_fib", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_parallel_fib", 4, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.

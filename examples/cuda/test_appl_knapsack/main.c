@@ -14,6 +14,10 @@
 #define INPUT "knapsack-small-1.input"
 
 #define ALLOC_NAME "default_allocator"
+#define MAX_WORKERS 128
+#define HB_L2_CACHE_LINE_WORDS 16
+#define BUF_FACTOR 129
+#define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 /* every item in the knapsack has a weight and a value */
 #define MAX_ITEMS 256
@@ -98,6 +102,9 @@ int kernel_appl_knapsack (int argc, char **argv) {
                 eva_t device_result;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
 
+                eva_t dram_buffer;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
                  * Define tg_dim_x/y: number of tiles in each tile group
@@ -123,12 +130,12 @@ int kernel_appl_knapsack (int argc, char **argv) {
                 void *src = (void *) &items[0];
                 BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(struct item), HB_MC_MEMCPY_TO_DEVICE));
 
-                int cuda_argv[4] = {device_result, items_device, N, capacity};
+                int cuda_argv[5] = {device_result, items_device, N, capacity, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_knapsack", 4, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_knapsack", 5, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.

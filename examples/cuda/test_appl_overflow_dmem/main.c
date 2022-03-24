@@ -42,6 +42,11 @@
 #define N 1536
 #define GRAIN_SIZE 16
 
+#define MAX_WORKERS 128
+#define HB_L2_CACHE_LINE_WORDS 16
+#define BUF_FACTOR 129
+#define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
+
 /*!
  * Runs the vector addition a one 2x2 tile groups. A[N] + B[N] --> C[N]
  * Grid dimensions are prefixed at 1x1. --> block_size_x is set to N.
@@ -92,6 +97,9 @@ int kernel_vec_add (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(uint32_t), &B_device)); /* allocate B[N] on the device */
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(uint32_t), &C_device)); /* allocate C[N] on the device */
 
+                eva_t dram_buffer;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
                 /*****************************************************************************************************************
                  * Allocate memory on the host for A & B and initialize with random values.
                  ******************************************************************************************************************/
@@ -124,12 +132,12 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[5] = {A_device, B_device, C_device, N, GRAIN_SIZE};
+                int cuda_argv[6] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_overflow_dmem", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_overflow_dmem", 6, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
