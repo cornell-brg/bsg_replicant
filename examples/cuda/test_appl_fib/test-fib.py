@@ -14,7 +14,7 @@ def gen_sh(n, gsize, X, Y):
 if __name__ == "__main__":
   path = str(os.path.abspath(os.getcwd()))
   print(path)
-  for n in range(12,16):
-    for g in range(max(1,n-8),n):
-      gen_sh(n, g, 2, 2)
+  for n in range(16,22):
+    for g in range(3,n-8):
+      gen_sh(n, g, 16, 8)
       run = subprocess.run(["sh", path + "/run.sh"], env=os.environ)
