@@ -42,6 +42,11 @@
 #define N 64
 #define GBASE 16
 
+#define MAX_WORKERS 128
+#define HB_L2_CACHE_LINE_WORDS 16
+#define BUF_FACTOR 129
+#define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
+
 #ifndef RAND_MAX
 #define RAND_MAX 32767
 #endif
@@ -132,6 +137,9 @@ int kernel_mattranspose (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &A_device)); /* allocate A[N] on the device */
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &B_device)); /* allocate B[N] on the device */
 
+                eva_t dram_buffer;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
                 /*****************************************************************************************************************
                  * Allocate memory on the host for A & B and initialize with random values.
                  ******************************************************************************************************************/
@@ -159,12 +167,12 @@ int kernel_mattranspose (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[4] = {A_device, B_device, N, GBASE};
+                int cuda_argv[5] = {A_device, B_device, N, GBASE, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_mattranspose", 4, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_mattranspose", 5, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
