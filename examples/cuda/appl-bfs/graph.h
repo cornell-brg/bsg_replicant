@@ -1,6 +1,5 @@
 #ifndef GRAPH_H
 #define GRAPH_H
-#include "compressedVertex.h"
 #include "parallel.h"
 #include "vertex.h"
 #include <fstream>
@@ -92,8 +91,7 @@ struct graph {
 
   void transpose()
   {
-    if ( ( sizeof( vertex ) == sizeof( asymmetricVertex ) ) ||
-         ( sizeof( vertex ) == sizeof( compressedAsymmetricVertex ) ) ) {
+    if ( sizeof( vertex ) == sizeof( asymmetricVertex ) ) {
       appl::parallel_for( long( 0 ), n,
                           [&]( long i ) { V[i].flipEdges(); } );
       transposed = !transposed;

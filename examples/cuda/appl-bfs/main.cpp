@@ -14,7 +14,6 @@
 
 // Ligra headers
 #include "IO.h"
-#include "compressedVertex.h"
 #include "edgeMap_utils.h"
 #include "graph.h"
 #include "index_map.h"
