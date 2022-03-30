@@ -34,13 +34,10 @@
 #include <string>
 
 #include "IO.h"
-#include "compressedVertex.h"
 #include "edgeMap_utils.h"
-#include "gettime.h"
 #include "graph.h"
 #include "index_map.h"
 #include "parallel.h"
-#include "parseCommandLine.h"
 #include "utils.h"
 #include "vertex.h"
 #include "vertexSubset.h"
@@ -547,10 +544,6 @@ inline bool cond_true( intT d )
 {
   return 1;
 }
-
-template <class vertex>
-void Compute( graph<vertex>&, commandLine, char* out_file,
-              char* ref_file );
 
 template <typename T>
 void verify( T* array, char* ref_file, int size )
