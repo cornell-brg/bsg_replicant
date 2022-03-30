@@ -13,16 +13,7 @@
 #include <iostream>
 
 // Ligra headers
-#include "IO.h"
-#include "edgeMap_utils.h"
-#include "graph.h"
-#include "index_map.h"
-#include "parallel.h"
-#include "utils.h"
-#include "vertex.h"
-#include "vertexSubset.h"
-
-#include "appl.h"
+#include "ligra.h"
 
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
