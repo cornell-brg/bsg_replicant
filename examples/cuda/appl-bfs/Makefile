@@ -109,7 +109,7 @@ $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv: $(BSG_MACHINE_PATH)/Makefile.mac
 #
 # SIM_ARGS: Use this to pass arguments to the simulator
 ###############################################################################
-C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME)
+C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME) haha.txt 16 1 42
 
 SIM_ARGS ?=
 
