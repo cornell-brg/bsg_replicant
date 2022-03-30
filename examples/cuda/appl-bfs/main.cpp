@@ -21,6 +21,54 @@
 #define BUF_FACTOR 129
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
+struct BFS_F {
+  uintE* Parents;
+  BFS_F( uintE* _Parents ) : Parents( _Parents ) {}
+  inline bool update( uintE s, uintE d )
+  { // Update
+    if ( Parents[d] == UINT_E_MAX ) {
+      Parents[d] = s;
+      return 1;
+    }
+    else
+      return 0;
+  }
+  inline bool updateAtomic( uintE s, uintE d )
+  { // atomic version of Update
+    return update( s, d );
+  }
+  // cond function checks if vertex has been visited yet
+  inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
+};
+
+template <class vertex>
+void Compute( graph<vertex>& GA, char* out_file, char* ref_file )
+{
+  int32_t start = 0;
+  int32_t n     = GA.n;
+  // creates Parents array, initialized to all -1, except for start
+  uintE* Parents = newA( uintE, n );
+  appl::parallel_for( 0, n,
+                      [&]( int32_t i ) { Parents[i] = UINT_E_MAX; } );
+  Parents[start] = start;
+  vertexSubset Frontier( n, start ); // creates initial frontier
+  while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
+    vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents ) );
+    Frontier.del();
+    Frontier = output; // set new frontier
+  }
+
+  // verify or dump outputs
+  if ( ref_file ) {
+    verify<uintE>( Parents, ref_file, n );
+  }
+  else if ( out_file ) {
+    output<uintE>( Parents, out_file, n );
+  }
+
+  Frontier.del();
+  free( Parents );
+}
 
 uint32_t host_fib(uint32_t n) {
   if (n < 2)
@@ -50,6 +98,7 @@ int kernel_appl_bfs (int argc, char **argv) {
         if (symmetric) {
           graph<symmetricVertex> G = readGraph<symmetricVertex>(
               iFile.c_str(), false, (bool)symmetric, false, false);
+          Compute(G, NULL, NULL);
         } else {
         }
 
