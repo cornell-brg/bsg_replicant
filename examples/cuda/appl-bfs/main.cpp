@@ -13,6 +13,19 @@
 #include <iostream>
 
 // Ligra headers
+#include "IO.h"
+#include "compressedVertex.h"
+#include "edgeMap_utils.h"
+#include "gettime.h"
+#include "graph.h"
+#include "index_map.h"
+#include "parallel.h"
+#include "parseCommandLine.h"
+#include "utils.h"
+#include "vertex.h"
+#include "vertexSubset.h"
+
+#include "appl.h"
 
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
@@ -45,6 +58,12 @@ int kernel_appl_bfs (int argc, char **argv) {
         // debug
         std::cout << "Ligra command line parsed -- iFile:" << iFile << " grain_size=" << grain_size
                   << " symmetric?=" << symmetric << " rounds=" << rounds << std::endl;
+
+        if (symmetric) {
+          graph<symmetricVertex> G = readGraph<symmetricVertex>(
+              iFile.c_str(), false, (bool)symmetric, false, false);
+        } else {
+        }
 
         bsg_pr_test_info("Running the Ligra BFS on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
