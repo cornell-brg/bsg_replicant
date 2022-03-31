@@ -94,6 +94,7 @@ int kernel_appl_bfs (int argc, char **argv) {
         // debug
         std::cout << "Ligra command line parsed -- iFile:" << iFile << " grain_size=" << grain_size
                   << " symmetric?=" << symmetric << " rounds=" << rounds << std::endl;
+        std::cout << "size of symmetricVertex " << sizeof(symmetricVertex) << std::endl;
 
         hb_mc_device_t device;
         BSG_CUDA_CALL(hb_mc_device_init(&device, test_name.c_str(), 0));
@@ -111,11 +112,12 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Ligra host code
                  ******************************************************************************************************************/
-                if (symmetric) {
-                  graph<symmetricVertex> G = readGraph<symmetricVertex>(
-                      iFile.c_str(), false, (bool)symmetric, false, false, device);
-                  Compute(G, NULL, NULL);
-                } else {
+                graph<symmetricVertex> G = readGraph<symmetricVertex>(
+                    iFile.c_str(), false, (bool)symmetric, false, false, device);
+                Compute(G, NULL, NULL);
+                std::cout << "G.V[1].getOutDegree() = " << G.V[1].getOutDegree() << std::endl;
+                for (int i = 0; i < G.V[1].getOutDegree(); i++) {
+                  std::cout << "G.V[1].getInNeighbor(" << i << ") = " << G.V[1].getInNeighbor(i) << std::endl;
                 }
 
                 /*****************************************************************************************************************
@@ -140,12 +142,12 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;
-                const uint32_t cuda_argv[4] = {device_result, N, gsize, dram_buffer};
+                const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 4, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 5, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
