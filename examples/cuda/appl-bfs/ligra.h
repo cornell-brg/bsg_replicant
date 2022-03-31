@@ -65,12 +65,12 @@ vertexSubsetData<data> edgeMapDense( graph<vertex> GA, VS& vertexSubset,
                                      F& f, const flags fl )
 {
   using D   = tuple<bool, data>;
-  long    n = GA.n;
+  int    n = GA.n;
   vertex* G = GA.V;
   if ( should_output( fl ) ) {
     D*   next = newA( D, n );
     auto g    = get_emdense_gen<data>( next );
-    appl::parallel_for( long( 0 ), n, [&]( long v ) {
+    appl::parallel_for( int( 0 ), n, [&]( int v ) {
       std::get<0>( next[v] ) = 0;
       if ( f.cond( v ) ) {
         G[v].decodeInNghBreakEarly( v, vertexSubset, f, g,
@@ -81,7 +81,7 @@ vertexSubsetData<data> edgeMapDense( graph<vertex> GA, VS& vertexSubset,
   }
   else {
     auto g = get_emdense_nooutput_gen<data>();
-    appl::parallel_for( long( 0 ), n, [&]( long v ) {
+    appl::parallel_for( int( 0 ), n, [&]( int v ) {
       if ( f.cond( v ) ) {
         G[v].decodeInNghBreakEarly( v, vertexSubset, f, g,
                                     fl & dense_parallel );
@@ -97,14 +97,14 @@ vertexSubsetData<data> edgeMapDenseForward( graph<vertex> GA,
                                             const flags fl )
 {
   using D   = tuple<bool, data>;
-  long    n = GA.n;
+  int    n = GA.n;
   vertex* G = GA.V;
   if ( should_output( fl ) ) {
     D*   next = newA( D, n );
     auto g    = get_emdense_forward_gen<data>( next );
-    appl::parallel_for( long( 0 ), n,
-                        [&]( long i ) { std::get<0>( next[i] ) = 0; } );
-    appl::parallel_for( long( 0 ), n, [&]( long i ) {
+    appl::parallel_for( int( 0 ), n,
+                        [&]( int i ) { std::get<0>( next[i] ) = 0; } );
+    appl::parallel_for( int( 0 ), n, [&]( int i ) {
       if ( vertexSubset.isIn( i ) ) {
         G[i].decodeOutNgh( i, f, g );
       }
@@ -113,7 +113,7 @@ vertexSubsetData<data> edgeMapDenseForward( graph<vertex> GA,
   }
   else {
     auto g = get_emdense_forward_nooutput_gen<data>();
-    appl::parallel_for( long( 0 ), n, [&]( long i ) {
+    appl::parallel_for( int( 0 ), n, [&]( int i ) {
       if ( vertexSubset.isIn( i ) ) {
         G[i].decodeOutNgh( i, f, g );
       }
@@ -128,9 +128,9 @@ edgeMapSparse( graph<vertex>& GA, vertex* frontierVertices, VS& indices,
                uintT* degrees, uintT m, F& f, const flags fl )
 {
   using S = tuple<uintE, data>;
-  long n  = indices.n;
+  int n  = indices.n;
   S*   outEdges;
-  long outEdgeCount = 0;
+  int outEdgeCount = 0;
 
   if ( should_output( fl ) ) {
     uintT* offsets = degrees;
@@ -157,8 +157,8 @@ edgeMapSparse( graph<vertex>& GA, vertex* frontierVertices, VS& indices,
     if ( fl & remove_duplicates ) {
       if ( GA.flags == NULL ) {
         GA.flags = newA( uintE, n );
-        appl::parallel_for( long( 0 ), n,
-                            [&]( long i ) { GA.flags[i] = UINT_E_MAX; } );
+        appl::parallel_for( int( 0 ), n,
+                            [&]( int i ) { GA.flags[i] = UINT_E_MAX; } );
       }
       auto get_key = [&]( size_t i ) -> uintE& {
         return std::get<0>( outEdges[i] );
@@ -185,8 +185,8 @@ edgeMapSparse_no_filter( graph<vertex>& GA, vertex* frontierVertices,
                          const flags fl )
 {
   using S           = tuple<uintE, data>;
-  long n            = indices.n;
-  long outEdgeCount = sequence::plusScan( offsets, offsets, m );
+  int n            = indices.n;
+  int outEdgeCount = sequence::plusScan( offsets, offsets, m );
   S*   outEdges     = newA( S, outEdgeCount );
 
   auto g = get_emsparse_no_filter_gen<data>( outEdges );
@@ -226,7 +226,7 @@ edgeMapSparse_no_filter( graph<vertex>& GA, vertex* frontierVertices,
     }
   } );
 
-  long outSize  = sequence::plusScan( cts, cts, n_blocks );
+  int outSize  = sequence::plusScan( cts, cts, n_blocks );
   cts[n_blocks] = outSize;
 
   S* out = newA( S, outSize );
@@ -249,8 +249,8 @@ edgeMapSparse_no_filter( graph<vertex>& GA, vertex* frontierVertices,
   if ( fl & remove_duplicates ) {
     if ( GA.flags == NULL ) {
       GA.flags = newA( uintE, n );
-      appl::parallel_for( long( 0 ), n,
-                          [&]( long i ) { GA.flags[i] = UINT_E_MAX; } );
+      appl::parallel_for( int( 0 ), n,
+                          [&]( int i ) { GA.flags[i] = UINT_E_MAX; } );
     }
     auto get_key = [&]( size_t i ) -> uintE& {
       return std::get<0>( out[i] );
@@ -274,7 +274,7 @@ vertexSubsetData<data> edgeMapData( graph<vertex>& GA, VS& vs, F f,
                                     intT         threshold = -1,
                                     const flags& fl        = 0 )
 {
-  long numVertices = GA.n, numEdges = GA.m, m = vs.numNonzeros();
+  int numVertices = GA.n, numEdges = GA.m, m = vs.numNonzeros();
   if ( threshold == -1 )
     threshold = numEdges / 20; // default threshold
   vertex* G = GA.V;
@@ -288,7 +288,7 @@ vertexSubsetData<data> edgeMapData( graph<vertex>& GA, VS& vs, F f,
   uintT*  degrees          = newA( uintT, m );
   vertex* frontierVertices = newA( vertex, m );
   {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE  v_id         = vs.vtx( i );
       vertex v            = G[v_id];
       degrees[i]          = v.getOutDegree();
@@ -340,8 +340,8 @@ vertexSubsetData<uintE> packEdges( graph<vertex>& GA, vertexSubset& vs,
   using S = tuple<uintE, uintE>;
   vs.toSparse();
   vertex* G = GA.V;
-  long    m = vs.numNonzeros();
-  long    n = vs.numRows();
+  int    m = vs.numNonzeros();
+  int    n = vs.numRows();
   if ( vs.size() == 0 ) {
     return vertexSubsetData<uintE>( n );
   }
@@ -350,7 +350,7 @@ vertexSubsetData<uintE> packEdges( graph<vertex>& GA, vertexSubset& vs,
     uintE v    = vs.vtx( i );
     degrees[i] = G[v].getOutDegree();
   } );
-  long outEdgeCount = pbbs::scan_add( degrees, degrees );
+  int outEdgeCount = pbbs::scan_add( degrees, degrees );
   S*   outV;
   if ( should_output( fl ) ) {
     outV = newA( S, vs.size() );
@@ -360,7 +360,7 @@ vertexSubsetData<uintE> packEdges( graph<vertex>& GA, vertexSubset& vs,
   uintE* tmp1 = newA( uintE, outEdgeCount );
   uintE* tmp2 = newA( uintE, outEdgeCount );
   if ( should_output( fl ) ) {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE  v       = vs.vtx( i );
       size_t offset  = degrees[i];
       auto   bitsOff = &( bits[offset] );
@@ -371,7 +371,7 @@ vertexSubsetData<uintE> packEdges( graph<vertex>& GA, vertexSubset& vs,
     } );
   }
   else {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE  v       = vs.vtx( i );
       size_t offset  = degrees[i];
       auto   bitsOff = &( bits[offset] );
@@ -401,8 +401,8 @@ vertexSubsetData<uintE> edgeMapFilter( graph<vertex>& GA,
     return packEdges<vertex, P>( GA, vs, p, fl );
   }
   vertex* G = GA.V;
-  long    m = vs.numNonzeros();
-  long    n = vs.numRows();
+  int    m = vs.numNonzeros();
+  int    n = vs.numRows();
   using S   = tuple<uintE, uintE>;
   if ( vs.size() == 0 ) {
     return vertexSubsetData<uintE>( n );
@@ -412,14 +412,14 @@ vertexSubsetData<uintE> edgeMapFilter( graph<vertex>& GA,
     outV = newA( S, vs.size() );
   }
   if ( should_output( fl ) ) {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE  v  = vs.vtx( i );
       size_t ct = G[v].countOutNgh( v, p );
       outV[i]   = make_tuple( v, ct );
     } );
   }
   else {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE  v  = vs.vtx( i );
       size_t ct = G[v].countOutNgh( v, p );
     } );
@@ -441,14 +441,14 @@ void vertexMap( VS& V, F f )
 {
   size_t n = V.numRows(), m = V.numNonzeros();
   if ( V.dense() ) {
-    appl::parallel_for( long( 0 ), n, [&]( long i ) {
+    appl::parallel_for( int( 0 ), n, [&]( int i ) {
       if ( V.isIn( i ) ) {
         f( i, V.ithData( i ) );
       }
     } );
   }
   else {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       f( V.vtx( i ), V.vtxData( i ) );
     } );
   }
@@ -478,12 +478,12 @@ void vertexMap( VS& V, F f )
 template <class F>
 vertexSubset vertexFilter( vertexSubset V, F filter )
 {
-  long n = V.numRows(), m = V.numNonzeros();
+  int n = V.numRows(), m = V.numNonzeros();
   V.toDense();
   bool* d_out = newA( bool, n );
-  appl::parallel_for( long( 0 ), n, [&]( long i ) { d_out[i] = 0; } );
+  appl::parallel_for( int( 0 ), n, [&]( int i ) { d_out[i] = 0; } );
   {
-    appl::parallel_for( long( 0 ), n, [&]( long i ) {
+    appl::parallel_for( int( 0 ), n, [&]( int i ) {
       if ( V.d[i] )
         d_out[i] = filter( i );
     } );
@@ -494,14 +494,14 @@ vertexSubset vertexFilter( vertexSubset V, F filter )
 template <class F>
 vertexSubset vertexFilter2( vertexSubset V, F filter )
 {
-  long n = V.numRows(), m = V.numNonzeros();
+  int n = V.numRows(), m = V.numNonzeros();
   if ( m == 0 ) {
     return vertexSubset( n );
   }
   bool* bits = newA( bool, m );
   V.toSparse();
   {
-    appl::parallel_for( long( 0 ), m, [&]( long i ) {
+    appl::parallel_for( int( 0 ), m, [&]( int i ) {
       uintE v = V.vtx( i );
       bits[i] = filter( v );
     } );
@@ -519,13 +519,13 @@ vertexSubset vertexFilter2( vertexSubset V, F filter )
 template <class data, class F>
 vertexSubset vertexFilter2( vertexSubsetData<data> V, F filter )
 {
-  long n = V.numRows(), m = V.numNonzeros();
+  int n = V.numRows(), m = V.numNonzeros();
   if ( m == 0 ) {
     return vertexSubset( n );
   }
   bool* bits = newA( bool, m );
   V.toSparse();
-  appl::parallel_for( long( 0 ), m, [&]( long i ) {
+  appl::parallel_for( int( 0 ), m, [&]( int i ) {
     auto t  = V.vtxAndData( i );
     bits[i] = filter( std::get<0>( t ), std::get<1>( t ) );
   } );
@@ -558,7 +558,7 @@ void verify( T* array, char* ref_file, int size )
     T   ref_val;
     int mismatch_count = 0;
 
-    for ( long i = 0; i < size; i++ ) {
+    for ( int i = 0; i < size; i++ ) {
       infile.read( (char*)&ref_val, sizeof( T ) );
 
 #define MAX_DIFF 0.000001
@@ -593,7 +593,7 @@ void output( T* array, char* out_file, int size )
   }
   else {
     T val;
-    for ( long i = 0; i < size; i++ ) {
+    for ( int i = 0; i < size; i++ ) {
       val = array[i];
       outfile.write( (char*)&val, sizeof( T ) );
     }

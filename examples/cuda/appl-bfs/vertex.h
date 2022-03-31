@@ -11,7 +11,7 @@ namespace decode_uncompressed {
 // current frontier, calling update if it is. If processing the edges
 // sequentially, break once !cond(v_id).
 template <class vertex, class F, class G, class VS>
-inline void decodeInNghBreakEarly( vertex* v, long v_id, VS& vertexSubset,
+inline void decodeInNghBreakEarly( vertex* v, int v_id, VS& vertexSubset,
                                    F& f, G& g, bool parallel = 0 )
 {
   uintE d = v->getInDegree();
@@ -48,7 +48,7 @@ inline void decodeInNghBreakEarly( vertex* v, long v_id, VS& vertexSubset,
 // Used by edgeMapDenseForward. For each out-neighbor satisfying cond,
 // call updateAtomic.
 template <class V, class F, class G>
-inline void decodeOutNgh( V* v, long i, F& f, G& g )
+inline void decodeOutNgh( V* v, int i, F& f, G& g )
 {
   uintE d = v->getOutDegree();
   granular_for( j, 0, d, ( d > 1000 ), {
@@ -67,7 +67,7 @@ inline void decodeOutNgh( V* v, long i, F& f, G& g )
 // Used by edgeMapSparse. For each out-neighbor satisfying cond, call
 // updateAtomic.
 template <class V, class F, class G>
-inline void decodeOutNghSparse( V* v, long i, uintT o, F& f, G& g )
+inline void decodeOutNghSparse( V* v, int i, uintT o, F& f, G& g )
 {
   uintE d = v->getOutDegree();
   granular_for( j, 0, d, ( d > 1000 ), {
@@ -89,7 +89,7 @@ inline void decodeOutNghSparse( V* v, long i, uintT o, F& f, G& g )
 // Used by edgeMapSparse_no_filter. Sequentially decode the out-neighbors,
 // and compactly write all neighbors satisfying g().
 template <class V, class F, class G>
-inline size_t decodeOutNghSparseSeq( V* v, long i, uintT o, F& f, G& g )
+inline size_t decodeOutNghSparseSeq( V* v, int i, uintT o, F& f, G& g )
 {
   uintE  d = v->getOutDegree();
   size_t k = 0;
@@ -113,7 +113,7 @@ inline size_t decodeOutNghSparseSeq( V* v, long i, uintT o, F& f, G& g )
 // Decode the out-neighbors of v, and return the number of neighbors
 // that satisfy f.
 template <class V, class F>
-inline size_t countOutNgh( V* v, long vtx_id, F& f )
+inline size_t countOutNgh( V* v, int vtx_id, F& f )
 {
   uintE d = v->getOutDegree();
   if ( d < 2000 ) {
@@ -156,7 +156,7 @@ inline size_t countOutNgh( V* v, long vtx_id, F& f )
 // Decode the out-neighbors of v. Apply f(src, ngh) and store the result
 // using g.
 template <class V, class E, class F, class G>
-inline void copyOutNgh( V* v, long src, uintT o, F& f, G& g )
+inline void copyOutNgh( V* v, int src, uintT o, F& f, G& g )
 {
   uintE d = v->getOutDegree();
   granular_for( j, 0, d, ( d > 1000 ), {
@@ -172,7 +172,7 @@ inline void copyOutNgh( V* v, long src, uintT o, F& f, G& g )
 
 // TODO(laxmand): Add support for weighted graphs.
 template <class V, class Pred>
-inline size_t packOutNgh( V* v, long vtx_id, Pred& p, bool* bits,
+inline size_t packOutNgh( V* v, int vtx_id, Pred& p, bool* bits,
                           uintE* tmp )
 {
   uintE d = v->getOutDegree();
@@ -256,7 +256,7 @@ struct symmetricVertex {
   void  flipEdges() {}
 
   template <class VS, class F, class G>
-  inline void decodeInNghBreakEarly( long v_id, VS& vertexSubset, F& f,
+  inline void decodeInNghBreakEarly( int v_id, VS& vertexSubset, F& f,
                                      G& g, bool parallel = 0 )
   {
     decode_uncompressed::decodeInNghBreakEarly<symmetricVertex, F, G, VS>(
@@ -264,42 +264,42 @@ struct symmetricVertex {
   }
 
   template <class F, class G>
-  inline void decodeOutNgh( long i, F& f, G& g )
+  inline void decodeOutNgh( int i, F& f, G& g )
   {
     decode_uncompressed::decodeOutNgh<symmetricVertex, F, G>( this, i, f,
                                                               g );
   }
 
   template <class F, class G>
-  inline void decodeOutNghSparse( long i, uintT o, F& f, G& g )
+  inline void decodeOutNghSparse( int i, uintT o, F& f, G& g )
   {
     decode_uncompressed::decodeOutNghSparse<symmetricVertex, F>(
         this, i, o, f, g );
   }
 
   template <class F, class G>
-  inline size_t decodeOutNghSparseSeq( long i, uintT o, F& f, G& g )
+  inline size_t decodeOutNghSparseSeq( int i, uintT o, F& f, G& g )
   {
     return decode_uncompressed::decodeOutNghSparseSeq<symmetricVertex, F>(
         this, i, o, f, g );
   }
 
   template <class E, class F, class G>
-  inline void copyOutNgh( long i, uintT o, F& f, G& g )
+  inline void copyOutNgh( int i, uintT o, F& f, G& g )
   {
     decode_uncompressed::copyOutNgh<symmetricVertex, E>( this, i, o, f,
                                                          g );
   }
 
   template <class F>
-  inline size_t countOutNgh( long i, F& f )
+  inline size_t countOutNgh( int i, F& f )
   {
     return decode_uncompressed::countOutNgh<symmetricVertex, F>( this, i,
                                                                  f );
   }
 
   template <class F>
-  inline size_t packOutNgh( long i, F& f, bool* bits, uintE* tmp1,
+  inline size_t packOutNgh( int i, F& f, bool* bits, uintE* tmp1,
                             uintE* tmp2 )
   {
     return decode_uncompressed::packOutNgh<symmetricVertex, F>(
@@ -371,7 +371,7 @@ struct asymmetricVertex {
   }
 
   template <class VS, class F, class G>
-  inline void decodeInNghBreakEarly( long v_id, VS& vertexSubset, F& f,
+  inline void decodeInNghBreakEarly( int v_id, VS& vertexSubset, F& f,
                                      G& g, bool parallel = 0 )
   {
     decode_uncompressed::decodeInNghBreakEarly<asymmetricVertex, F, G,
@@ -380,21 +380,21 @@ struct asymmetricVertex {
   }
 
   template <class F, class G>
-  inline void decodeOutNgh( long i, F& f, G& g )
+  inline void decodeOutNgh( int i, F& f, G& g )
   {
     decode_uncompressed::decodeOutNgh<asymmetricVertex, F, G>( this, i, f,
                                                                g );
   }
 
   template <class F, class G>
-  inline void decodeOutNghSparse( long i, uintT o, F& f, G& g )
+  inline void decodeOutNghSparse( int i, uintT o, F& f, G& g )
   {
     decode_uncompressed::decodeOutNghSparse<asymmetricVertex, F>(
         this, i, o, f, g );
   }
 
   template <class F, class G>
-  inline size_t decodeOutNghSparseSeq( long i, uintT o, F& f, G& g )
+  inline size_t decodeOutNghSparseSeq( int i, uintT o, F& f, G& g )
   {
     return decode_uncompressed::decodeOutNghSparseSeq<asymmetricVertex,
                                                       F>( this, i, o, f,
@@ -402,21 +402,21 @@ struct asymmetricVertex {
   }
 
   template <class E, class F, class G>
-  inline void copyOutNgh( long i, uintT o, F& f, G& g )
+  inline void copyOutNgh( int i, uintT o, F& f, G& g )
   {
     decode_uncompressed::copyOutNgh<asymmetricVertex, E>( this, i, o, f,
                                                           g );
   }
 
   template <class F>
-  inline size_t countOutNgh( long i, F& f )
+  inline size_t countOutNgh( int i, F& f )
   {
     return decode_uncompressed::countOutNgh<asymmetricVertex, F>( this, i,
                                                                   f );
   }
 
   template <class F>
-  inline size_t packOutNgh( long i, F& f, bool* bits, uintE* tmp1,
+  inline size_t packOutNgh( int i, F& f, bool* bits, uintE* tmp1,
                             uintE* tmp2 )
   {
     return decode_uncompressed::packOutNgh<asymmetricVertex, F>(

@@ -22,11 +22,11 @@ template <class vertex>
 struct Uncompressed_Mem : public Deletable {
 public:
   vertex* V;
-  long    n;
-  long    m;
+  int    n;
+  int    m;
   void *  allocatedInplace, *inEdges;
 
-  Uncompressed_Mem( vertex* VV, long nn, long mm, void* ai,
+  Uncompressed_Mem( vertex* VV, int nn, int mm, void* ai,
                     void* _inEdges = NULL )
       : V( VV ), n( nn ), m( mm ), allocatedInplace( ai ),
         inEdges( _inEdges )
@@ -36,7 +36,7 @@ public:
   void del()
   {
     if ( allocatedInplace == NULL )
-      for ( long i = 0; i < n; i++ )
+      for ( int i = 0; i < n; i++ )
         V[i].del();
     else
       free( allocatedInplace );
@@ -64,18 +64,18 @@ public:
 template <class vertex>
 struct graph {
   vertex*    V;
-  long       n;
-  long       m;
+  int       n;
+  int       m;
   bool       transposed;
   uintE*     flags;
   Deletable* D;
 
-  graph( vertex* _V, long _n, long _m, Deletable* _D )
+  graph( vertex* _V, int _n, int _m, Deletable* _D )
       : V( _V ), n( _n ), m( _m ), D( _D ), flags( NULL ), transposed( 0 )
   {
   }
 
-  graph( vertex* _V, long _n, long _m, Deletable* _D, uintE* _flags )
+  graph( vertex* _V, int _n, int _m, Deletable* _D, uintE* _flags )
       : V( _V ), n( _n ), m( _m ), D( _D ), flags( _flags ),
         transposed( 0 )
   {
@@ -92,8 +92,8 @@ struct graph {
   void transpose()
   {
     if ( sizeof( vertex ) == sizeof( asymmetricVertex ) ) {
-      appl::parallel_for( long( 0 ), n,
-                          [&]( long i ) { V[i].flipEdges(); } );
+      appl::parallel_for( int( 0 ), n,
+                          [&]( int i ) { V[i].flipEdges(); } );
       transposed = !transposed;
     }
   }

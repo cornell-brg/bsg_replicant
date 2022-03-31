@@ -68,12 +68,12 @@ struct pairBothCmp {
 // A structure that keeps a sequence of strings all allocated from
 // the same block of memory
 struct words {
-  long   n;       // total number of characters
+  int   n;       // total number of characters
   char*  Chars;   // array storing all strings
-  long   m;       // number of substrings
+  int   m;       // number of substrings
   char** Strings; // pointers to strings (all should be null terminated)
   words() {}
-  words( char* C, long nn, char** S, long mm )
+  words( char* C, int nn, char** S, int mm )
       : Chars( C ), n( nn ), Strings( S ), m( mm )
   {
   }
@@ -146,9 +146,9 @@ _seq<char> readStringFromFile( const char* fileName )
     std::cout << "Unable to open file: " << fileName << std::endl;
     abort();
   }
-  long end = file.tellg();
+  int end = file.tellg();
   file.seekg( 0, ios::beg );
-  long  n     = end - file.tellg();
+  int  n     = end - file.tellg();
   char* bytes = newA( char, n + 1 );
   file.read( bytes, n );
   file.close();
@@ -156,10 +156,10 @@ _seq<char> readStringFromFile( const char* fileName )
 }
 
 // parallel code for converting a string to words
-words stringToWords( char* Str, long n )
+words stringToWords( char* Str, int n )
 {
   {
-    for( long i = 0; i < n; i++ ) if ( isSpace( Str[i] ) ) Str[i] =
+    for( int i = 0; i < n; i++ ) if ( isSpace( Str[i] ) ) Str[i] =
         0;
   }
 
@@ -167,18 +167,18 @@ words stringToWords( char* Str, long n )
   bool* FL = newA( bool, n );
   FL[0]    = Str[0];
   {
-    for( long i = 1; i < n; i++ ) FL[i] = Str[i] && !Str[i - 1];
+    for( int i = 1; i < n; i++ ) FL[i] = Str[i] && !Str[i - 1];
   }
 
   // offset for each start of word
-  _seq<long> Off     = sequence::packIndex<long>( FL, n );
-  long       m       = Off.n;
-  long*      offsets = Off.A;
+  _seq<int> Off     = sequence::packIndex<int>( FL, n );
+  int       m       = Off.n;
+  int*      offsets = Off.A;
 
   // pointer to each start of word
   char** SA = newA( char*, m );
   {
-    for( long j = 0; j < m; j++ ) SA[j] = Str + offsets[j];
+    for( int j = 0; j < m; j++ ) SA[j] = Str + offsets[j];
   }
 
   free( offsets );
@@ -216,9 +216,9 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
     abort();
   }
 
-  long len = W.m - 1;
-  long n   = atol( W.Strings[1] );
-  long m   = atol( W.Strings[2] );
+  int len = W.m - 1;
+  int n   = atol( W.Strings[1] );
+  int m   = atol( W.Strings[2] );
 #ifndef WEIGHTED
   if ( len != n + m + 2 ) {
 #else
@@ -236,11 +236,11 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
 #endif
 
   {
-    for( long i = 0; i < n; i++ ) offsets[i] =
+    for( int i = 0; i < n; i++ ) offsets[i] =
         atol( W.Strings[i + 3] );
   }
   {
-    for( long i = 0; i < m; i++ )
+    for( int i = 0; i < m; i++ )
     {
 #ifndef WEIGHTED
       edges[i] = atol( W.Strings[i + n + 3] );
@@ -271,7 +271,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
   if ( !isSymmetric ) {
     uintT* tOffsets = newA( uintT, n );
     {
-      for( long i = 0; i < n; i++ ) tOffsets[i] = INT_T_MAX;
+      for( int i = 0; i < n; i++ ) tOffsets[i] = INT_T_MAX;
     }
 #ifndef WEIGHTED
     intPair* temp = newA( intPair, m );
@@ -279,7 +279,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
     intTriple* temp = newA( intTriple, m );
 #endif
     {
-      for( long i = 0; i < n; i++ )
+      for( int i = 0; i < n; i++ )
       {
         uintT o = offsets[i];
         for ( uintT j = 0; j < v[i].getOutDegree(); j++ ) {
@@ -319,7 +319,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
     inEdges[1]    = temp[0].second.second;
 #endif
     {
-      for( long i = 1; i < m; i++ )
+      for( int i = 1; i < m; i++ )
       {
 #ifndef WEIGHTED
         inEdges[i] = temp[i].second;
@@ -340,7 +340,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
     sequence::scanIBack( tOffsets, tOffsets, n, minF<uintT>(), (uintT)m );
 
     {
-      for( long i = 0; i < n; i++ )
+      for( int i = 0; i < n; i++ )
       {
         uintT o = tOffsets[i];
         uintT l = ( ( i == n - 1 ) ? m : tOffsets[i + 1] ) - tOffsets[i];
@@ -384,25 +384,25 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
   strcat( idxFile, idx );
 
   ifstream in( configFile, ifstream::in );
-  long     n;
+  int     n;
   in >> n;
   in.close();
 
   ifstream in2( adjFile, ifstream::in | ios::binary ); // stored as uints
   in2.seekg( 0, ios::end );
-  long size = in2.tellg();
+  int size = in2.tellg();
   in2.seekg( 0 );
 #ifdef WEIGHTED
-  long m = size / ( 2 * sizeof( uint ) );
+  int m = size / ( 2 * sizeof( uint ) );
 #else
-  long m = size / sizeof( uint );
+  int m = size / sizeof( uint );
 #endif
   char* s = (char*)malloc( size );
   in2.read( s, size );
   in2.close();
   uintE* edges = (uintE*)s;
 
-  ifstream in3( idxFile, ifstream::in | ios::binary ); // stored as longs
+  ifstream in3( idxFile, ifstream::in | ios::binary ); // stored as ints
   in3.seekg( 0, ios::end );
   size = in3.tellg();
   in3.seekg( 0 );
@@ -420,7 +420,7 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
 #ifdef WEIGHTED
   intE* edgesAndWeights = newA( intE, 2 * m );
   {
-    for( long i = 0; i < m; i++ )
+    for( int i = 0; i < m; i++ )
     {
       edgesAndWeights[2 * i]     = edges[i];
       edgesAndWeights[2 * i + 1] = edges[i + m];
@@ -429,7 +429,7 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
   // free(edges);
 #endif
   {
-    for( long i = 0; i < n; i++ )
+    for( int i = 0; i < n; i++ )
     {
       uintT o = offsets[i];
       uintT l = ( ( i == n - 1 ) ? m : offsets[i + 1] ) - offsets[i];
@@ -445,7 +445,7 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
   if ( !isSymmetric ) {
     uintT* tOffsets = newA( uintT, n );
     {
-      for( long i = 0; i < n; i++ ) tOffsets[i] = INT_T_MAX;
+      for( int i = 0; i < n; i++ ) tOffsets[i] = INT_T_MAX;
     }
 #ifndef WEIGHTED
     intPair* temp = newA( intPair, m );
@@ -491,7 +491,7 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
     inEdges[1]    = temp[0].second.second;
 #endif
     {
-      for( long i = 1; i < m; i++ )
+      for( int i = 1; i < m; i++ )
       {
 #ifndef WEIGHTED
         inEdges[i] = temp[i].second;
@@ -509,7 +509,7 @@ graph<vertex> readGraphFromBinary( const char* iFile, bool isSymmetric )
     // offset to the right
     sequence::scanIBack( tOffsets, tOffsets, n, minF<uintT>(), (uintT)m );
     {
-      for( long i = 0; i < n; i++ )
+      for( int i = 0; i < n; i++ )
       {
         uintT o = tOffsets[i];
         uintT l = ( ( i == n - 1 ) ? m : tOffsets[i + 1] ) - tOffsets[i];

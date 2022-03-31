@@ -22,20 +22,20 @@ struct vertexSubsetData {
   }
 
   // A vertexSubset from array of vertex indices.
-  vertexSubsetData( long _n, long _m, S* indices )
+  vertexSubsetData( int _n, int _m, S* indices )
       : n( _n ), m( _m ), s( indices ), d( NULL ), isDense( 0 )
   {
   }
 
   // A vertexSubset from boolean array giving number of true values.
-  vertexSubsetData( long _n, long _m, D* _d )
+  vertexSubsetData( int _n, int _m, D* _d )
       : n( _n ), m( _m ), s( NULL ), d( _d ), isDense( 1 )
   {
   }
 
   // A vertexSubset from boolean array giving number of true values.
   // Calculate number of nonzeros and store in m.
-  vertexSubsetData( long _n, D* _d )
+  vertexSubsetData( int _n, D* _d )
       : n( _n ), s( NULL ), d( _d ), isDense( 1 )
   {
     auto d_map = make_in_imap<size_t>(
@@ -96,11 +96,11 @@ struct vertexSubsetData {
     return fn;
   }
 
-  long size() const { return m; }
-  long numVertices() const { return n; }
+  int size() const { return m; }
+  int numVertices() const { return n; }
 
-  long numRows() const { return n; }
-  long numNonzeros() const { return m; }
+  int numRows() const { return n; }
+  int numNonzeros() const { return m; }
 
   bool isEmpty() const { return m == 0; }
   bool dense() const { return isDense; }
@@ -127,12 +127,12 @@ struct vertexSubsetData {
     if ( d == NULL ) {
       d = newA( D, n );
       appl::parallel_for(
-          long( 0 ), n, [&]( long i ) { std::get<0>( d[i] ) = false; } );
+          int( 0 ), n, [&]( int i ) { std::get<0>( d[i] ) = false; } );
       //{
-      //  for(long i=0;i<m;i++)
+      //  for(int i=0;i<m;i++)
       //    d[std::get<0>(s[i])] = make_tuple(true, std::get<1>(s[i]));
       //}
-      appl::parallel_for( long( 0 ), m, [&]( long i ) {
+      appl::parallel_for( int( 0 ), m, [&]( int i ) {
         d[std::get<0>( s[i] )] = make_tuple( true, std::get<1>( s[i] ) );
       } );
     }
@@ -157,7 +157,7 @@ struct vertexSubsetData<pbbs::empty> {
   }
 
   // A vertexSubset with a single vertex.
-  vertexSubsetData<pbbs::empty>( long _n, uintE v )
+  vertexSubsetData<pbbs::empty>( int _n, uintE v )
       : n( _n ), m( 1 ), d( NULL ), isDense( 0 )
   {
     s    = newA( uintE, 1 );
@@ -165,27 +165,27 @@ struct vertexSubsetData<pbbs::empty> {
   }
 
   // A vertexSubset from array of vertex indices.
-  vertexSubsetData<pbbs::empty>( long _n, long _m, S* indices )
+  vertexSubsetData<pbbs::empty>( int _n, int _m, S* indices )
       : n( _n ), m( _m ), s( indices ), d( NULL ), isDense( 0 )
   {
   }
 
   // A vertexSubset from array of vertex indices.
-  vertexSubsetData<pbbs::empty>( long _n, long _m,
+  vertexSubsetData<pbbs::empty>( int _n, int _m,
                                  tuple<uintE, pbbs::empty>* indices )
       : n( _n ), m( _m ), s( (uintE*)indices ), d( NULL ), isDense( 0 )
   {
   }
 
   // A vertexSubset from boolean array giving number of true values.
-  vertexSubsetData<pbbs::empty>( long _n, long _m, bool* _d )
+  vertexSubsetData<pbbs::empty>( int _n, int _m, bool* _d )
       : n( _n ), m( _m ), s( NULL ), d( _d ), isDense( 1 )
   {
   }
 
   // A vertexSubset from boolean array giving number of true values.
   // Calculate number of nonzeros and store in m.
-  vertexSubsetData<pbbs::empty>( long _n, bool* _d )
+  vertexSubsetData<pbbs::empty>( int _n, bool* _d )
       : n( _n ), s( NULL ), d( _d ), isDense( 1 )
   {
     auto d_map =
@@ -196,7 +196,7 @@ struct vertexSubsetData<pbbs::empty> {
 
   // A vertexSubset from boolean array giving number of true values.
   // Calculate number of nonzeros and store in m.
-  vertexSubsetData<pbbs::empty>( long _n, tuple<bool, pbbs::empty>* _d )
+  vertexSubsetData<pbbs::empty>( int _n, tuple<bool, pbbs::empty>* _d )
       : n( _n ), s( NULL ), d( (bool*)_d ), isDense( 1 )
   {
     auto d_map = make_in_imap<size_t>(
@@ -252,11 +252,11 @@ struct vertexSubsetData<pbbs::empty> {
     return fn;
   }
 
-  long size() { return m; }
-  long numVertices() { return n; }
+  int size() { return m; }
+  int numVertices() { return n; }
 
-  long numRows() { return n; }
-  long numNonzeros() { return m; }
+  int numRows() { return n; }
+  int numNonzeros() { return m; }
 
   bool isEmpty() { return m == 0; }
   bool dense() { return isDense; }
