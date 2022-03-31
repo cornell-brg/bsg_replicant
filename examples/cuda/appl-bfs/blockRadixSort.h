@@ -62,22 +62,22 @@ typedef unsigned char bIndexT;
 
 template <class E, class F, class bint>
 void radixBlock( E* A, E* B, bIndexT* Tmp, bint counts[BUCKETS],
-                 bint offsets[BUCKETS], bint Boffset, long n, long m,
+                 bint offsets[BUCKETS], bint Boffset, int n, int m,
                  F extract )
 {
 
-  for ( long i = 0; i < m; i++ )
+  for ( int i = 0; i < m; i++ )
     counts[i] = 0;
-  for ( long j = 0; j < n; j++ ) {
+  for ( int j = 0; j < n; j++ ) {
     bint k = Tmp[j] = extract( A[j] );
     counts[k]++;
   }
   bint s = Boffset;
-  for ( long i = 0; i < m; i++ ) {
+  for ( int i = 0; i < m; i++ ) {
     s += counts[i];
     offsets[i] = s;
   }
-  for ( long j = n - 1; j >= 0; j-- ) {
+  for ( int j = n - 1; j >= 0; j-- ) {
     bint x = --offsets[Tmp[j]];
     B[x]   = A[j];
   }
@@ -85,10 +85,10 @@ void radixBlock( E* A, E* B, bIndexT* Tmp, bint counts[BUCKETS],
 
 template <class E, class F, class bint>
 void radixStepSerial( E* A, E* B, bIndexT* Tmp, bint buckets[BUCKETS],
-                      long n, long m, F extract )
+                      int n, int m, F extract )
 {
   radixBlock( A, B, Tmp, buckets, buckets, (bint)0, n, m, extract );
-  for ( long i = 0; i < n; i++ )
+  for ( int i = 0; i < n; i++ )
     A[i] = B[i];
   return;
 }
@@ -105,32 +105,32 @@ void radixStepSerial( E* A, E* B, bIndexT* Tmp, bint buckets[BUCKETS],
 //  it must return a non-negative integer less than m
 template <class E, class F, class bint>
 void radixStep( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
-                long numBK, long n, long m, bool top, F extract )
+                int numBK, int n, int m, bool top, F extract )
 {
 
   // need 3 bucket sets per block
-  long expand = ( sizeof( E ) <= 4 ) ? 64 : 32;
-  long blocks = min( numBK / 3, ( 1 + n / ( BUCKETS * expand ) ) );
+  int expand = ( sizeof( E ) <= 4 ) ? 64 : 32;
+  int blocks = min( numBK / 3, ( 1 + n / ( BUCKETS * expand ) ) );
 
   if ( blocks < 2 ) {
     radixStepSerial( A, B, Tmp, BK[0], n, m, extract );
     return;
   }
-  long  nn   = ( n + blocks - 1 ) / blocks;
+  int  nn   = ( n + blocks - 1 ) / blocks;
   bint* cnts = (bint*)BK;
   bint* oA   = (bint*)( BK + blocks );
   bint* oB   = (bint*)( BK + 2 * blocks );
 
-  appl::parallel_for_1( 0l, blocks, [&]( long i ) {
+  appl::parallel_for_1( 0, blocks, [&]( int i ) {
     bint od  = i * nn;
-    long nni = min( max<long>( n - od, 0 ), nn );
+    int nni = min( max<int>( n - od, 0 ), nn );
     radixBlock( A + od, B, Tmp + od, cnts + m * i, oB + m * i, od, nni, m,
                 extract );
   } );
 
   transpose<bint, bint>( cnts, oA ).trans( blocks, m );
 
-  long ss;
+  int ss;
   if ( top )
     ss = sequence::scan( oA, oA, blocks * m, addF<bint>(), (bint)0 );
   else
@@ -141,7 +141,7 @@ void radixStep( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
   blockTrans<E, bint>( B, A, oB, oA, cnts ).trans( blocks, m );
 
   // put the offsets for each bucket in the first bucket set of BK
-  for ( long j = 0; j < m; j++ )
+  for ( int j = 0; j < m; j++ )
     BK[0][j] = oA[j * blocks];
 }
 
@@ -149,23 +149,23 @@ void radixStep( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
 template <class E, class F>
 struct eBits {
   F    _f;
-  long _mask;
-  long _offset;
-  eBits( long bits, long offset, F f )
+  int _mask;
+  int _offset;
+  eBits( int bits, int offset, F f )
       : _mask( ( 1 << bits ) - 1 ), _offset( offset ), _f( f )
   {
   }
-  long operator()( E p ) { return _mask & ( _f( p ) >> _offset ); }
+  int operator()( E p ) { return _mask & ( _f( p ) >> _offset ); }
 };
 
 // Radix sort with low order bits first
 template <class E, class F, class bint>
 void radixLoopBottomUp( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
-                        long numBK, long n, long bits, bool top, F f )
+                        int numBK, int n, int bits, bool top, F f )
 {
-  long rounds    = 1 + ( bits - 1 ) / MAX_RADIX;
-  long rbits     = 1 + ( bits - 1 ) / rounds;
-  long bitOffset = 0;
+  int rounds    = 1 + ( bits - 1 ) / MAX_RADIX;
+  int rbits     = 1 + ( bits - 1 ) / rounds;
+  int bitOffset = 0;
   while ( bitOffset < bits ) {
     if ( bitOffset + rbits > bits )
       rbits = bits - bitOffset;
@@ -178,28 +178,28 @@ void radixLoopBottomUp( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
 // Radix sort with high order bits first
 template <class E, class F, class bint>
 void radixLoopTopDown( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
-                       long numBK, long n, long bits, F f )
+                       int numBK, int n, int bits, F f )
 {
   if ( n == 0 )
     return;
   if ( bits <= MAX_RADIX ) {
-    radixStep( A, B, Tmp, BK, numBK, n, ( (long)1 ) << bits, true,
+    radixStep( A, B, Tmp, BK, numBK, n, ( (int)1 ) << bits, true,
                eBits<E, F>( bits, 0, f ) );
   }
   else if ( numBK >= BUCKETS + 1 ) {
-    radixStep( A, B, Tmp, BK, numBK, n, (long)BUCKETS, true,
+    radixStep( A, B, Tmp, BK, numBK, n, (int)BUCKETS, true,
                eBits<E, F>( MAX_RADIX, bits - MAX_RADIX, f ) );
     bint* offsets = BK[0];
-    long  remain  = numBK - BUCKETS - 1;
+    int  remain  = numBK - BUCKETS - 1;
     float y       = remain / (float)n;
     appl::parallel_for( 0, BUCKETS, [&]( int i ) {
-      long segOffset     = offsets[i];
-      long segNextOffset = ( i == BUCKETS - 1 ) ? n : offsets[i + 1];
-      long segLen        = segNextOffset - segOffset;
-      long blocksOffset  = ( (long)floor( segOffset * y ) ) + i + 1;
-      long blocksNextOffset =
-          ( (long)floor( segNextOffset * y ) ) + i + 2;
-      long blockLen = blocksNextOffset - blocksOffset;
+      int segOffset     = offsets[i];
+      int segNextOffset = ( i == BUCKETS - 1 ) ? n : offsets[i + 1];
+      int segLen        = segNextOffset - segOffset;
+      int blocksOffset  = ( (int)floor( segOffset * y ) ) + i + 1;
+      int blocksNextOffset =
+          ( (int)floor( segNextOffset * y ) ) + i + 2;
+      int blockLen = blocksNextOffset - blocksOffset;
       radixLoopTopDown( A + segOffset, B + segOffset, Tmp + segOffset,
                         BK + blocksOffset, blockLen, segLen,
                         bits - MAX_RADIX, f );
@@ -211,10 +211,10 @@ void radixLoopTopDown( E* A, E* B, bIndexT* Tmp, bint ( *BK )[BUCKETS],
 }
 
 template <class E>
-long iSortSpace( long n )
+int iSortSpace( int n )
 {
-  long esize = ( n >= INT_MAX ) ? sizeof( long ) : sizeof( int );
-  long numBK = 1 + n / ( BUCKETS * 8 );
+  int esize = ( n >= INT_MAX ) ? sizeof( int ) : sizeof( int );
+  int numBK = 1 + n / ( BUCKETS * 8 );
   return sizeof( E ) * n + esize * n + esize * BUCKETS * numBK;
 }
 
@@ -225,35 +225,35 @@ long iSortSpace( long n )
 //   such that for i < m-1, offsets[i+1]-offsets[i] gives the number
 //   of keys=i.   For i = m-1, n-offsets[i] is the number.
 template <class bint, class E, class F, class oint>
-void iSortX( E* A, oint* bucketOffsets, long n, long m, bool bottomUp,
+void iSortX( E* A, oint* bucketOffsets, int n, int m, bool bottomUp,
              char* tmpSpace, F f )
 {
   typedef bint bucketsT[BUCKETS];
 
-  long bits  = log2Up( m );
-  long numBK = 1 + n / ( BUCKETS * 8 );
+  int bits  = log2Up( m );
+  int numBK = 1 + n / ( BUCKETS * 8 );
 
   // the temporary space is broken into 3 parts: B, Tmp and BK
   //    E *B = (E*) tmpSpace;
-  //    long Bsize =sizeof(E)*n;
+  //    int Bsize =sizeof(E)*n;
   //    bIndexT *Tmp = (bIndexT*) (tmpSpace+Bsize); // one byte per item
-  //    long tmpSize = sizeof(bIndexT)*n;
+  //    int tmpSize = sizeof(bIndexT)*n;
   //    bucketsT *BK = (bucketsT*) (tmpSpace+Bsize+tmpSize);
 
-  long Bsize = sizeof( E ) * n;
+  int Bsize = sizeof( E ) * n;
   E*   B     = (E*)malloc( Bsize );
 
-  long     tmpSize = sizeof( bIndexT ) * n;
+  int     tmpSize = sizeof( bIndexT ) * n;
   bIndexT* Tmp     = (bIndexT*)malloc( tmpSize );
 
   bucketsT* BK = (bucketsT*)tmpSpace;
 
   if ( bits <= MAX_RADIX ) {
-    radixStep( A, B, Tmp, BK, numBK, n, (long)1 << bits, true,
+    radixStep( A, B, Tmp, BK, numBK, n, (int)1 << bits, true,
                eBits<E, F>( bits, 0, f ) );
     if ( bucketOffsets != NULL ) {
       appl::parallel_for(
-          0l, m, [&]( long i ) { bucketOffsets[i] = BK[0][i]; } );
+          0, m, [&]( int i ) { bucketOffsets[i] = BK[0][i]; } );
       return;
     }
   }
@@ -265,10 +265,10 @@ void iSortX( E* A, oint* bucketOffsets, long n, long m, bool bottomUp,
   }
 
   if ( bucketOffsets != NULL ) {
-    appl::parallel_for( 0l, m, [&]( long i ) { bucketOffsets[i] = n; } );
-    appl::parallel_for( 0l, ( n - 1 ), [&]( long i ) {
-      long v  = f( A[i] );
-      long vn = f( A[i + 1] );
+    appl::parallel_for( 0, m, [&]( int i ) { bucketOffsets[i] = n; } );
+    appl::parallel_for( 0, ( n - 1 ), [&]( int i ) {
+      int v  = f( A[i] );
+      int vn = f( A[i + 1] );
       if ( v != vn )
         bucketOffsets[vn] = i + 1;
     } );
@@ -283,81 +283,81 @@ void iSortX( E* A, oint* bucketOffsets, long n, long m, bool bottomUp,
 }
 
 template <class E, class F, class oint>
-void iSort( E* A, oint* bucketOffsets, long n, long m, bool bottomUp,
+void iSort( E* A, oint* bucketOffsets, int n, int m, bool bottomUp,
             char* tmpSpace, F f )
 {
   // if n fits in 32 bits then use unsigned ints for bucket counts
-  // otherwise use unsigned longs
+  // otherwise use unsigned ints
   // Doesn't make much difference in performance
   if ( n < UINT_MAX )
     iSortX<unsigned int>( A, bucketOffsets, n, m, bottomUp, tmpSpace, f );
   else
-    iSortX<unsigned long>( A, bucketOffsets, n, m, bottomUp, tmpSpace,
+    iSortX<unsigned int>( A, bucketOffsets, n, m, bottomUp, tmpSpace,
                            f );
 }
 
 // THE REST ARE JUST SPECIAL CASES
 
 template <class E, class F, class oint>
-void iSort( E* A, oint* bucketOffsets, long n, long m, bool bottomUp,
+void iSort( E* A, oint* bucketOffsets, int n, int m, bool bottomUp,
             F f )
 {
-  long  x = iSortSpace<E>( n );
+  int  x = iSortSpace<E>( n );
   char* s = (char*)malloc( x );
   iSort( A, bucketOffsets, n, m, bottomUp, s, f );
   free( s );
 }
 
 template <class E, class F, class oint>
-void iSort( E* A, oint* bucketOffsets, long n, long m, F f )
+void iSort( E* A, oint* bucketOffsets, int n, int m, F f )
 {
   iSort( A, bucketOffsets, n, m, false, f );
 }
 
 // A version that uses a NULL bucketOffset
 template <class E, class Func>
-void iSort( E* A, long n, long m, Func f )
+void iSort( E* A, int n, int m, Func f )
 {
-  iSort( A, (unsigned long*)NULL, n, m, false, f );
+  iSort( A, (unsigned int*)NULL, n, m, false, f );
 }
 
 template <class E, class Func>
-void iSort( E* A, long n, long m, char* s, Func f )
+void iSort( E* A, int n, int m, char* s, Func f )
 {
-  iSort( A, (unsigned long*)NULL, n, m, false, s, f );
+  iSort( A, (unsigned int*)NULL, n, m, false, s, f );
 }
 
 template <class E, class F>
-void iSortBottomUp( E* A, long n, long m, F f )
+void iSortBottomUp( E* A, int n, int m, F f )
 {
-  iSort( A, (unsigned long*)NULL, n, m, true, f );
+  iSort( A, (unsigned int*)NULL, n, m, true, f );
 }
 }; // namespace intSort
 
-static void integerSort( uintT* A, long n )
+static void integerSort( uintT* A, int n )
 {
-  long maxV = sequence::reduce( A, n, maxF<uintT>() );
+  int maxV = sequence::reduce( A, n, maxF<uintT>() );
   intSort::iSort( A, n, maxV + 1, identityF<uintT>() );
 }
 
-static void integerSort( uintT* A, long n, char* s )
+static void integerSort( uintT* A, int n, char* s )
 {
-  long maxV = sequence::reduce( A, n, maxF<uintT>() );
+  int maxV = sequence::reduce( A, n, maxF<uintT>() );
   intSort::iSort( A, n, maxV + 1, s, identityF<uintT>() );
 }
 
 template <class T>
-void integerSort( pair<uintT, T>* A, long n )
+void integerSort( pair<uintT, T>* A, int n )
 {
-  long maxV = sequence::mapReduce<uintT>( A, n, maxF<uintT>(),
+  int maxV = sequence::mapReduce<uintT>( A, n, maxF<uintT>(),
                                           firstF<uintT, T>() );
   intSort::iSort( A, n, maxV + 1, firstF<uintT, T>() );
 }
 
 template <class T>
-void integerSort( pair<uintT, T>* A, long n, char* s )
+void integerSort( pair<uintT, T>* A, int n, char* s )
 {
-  long maxV = sequence::mapReduce<uintT>( A, n, maxF<uintT>(),
+  int maxV = sequence::mapReduce<uintT>( A, n, maxF<uintT>(),
                                           firstF<uintT, T>() );
   intSort::iSort( A, n, maxV + 1, s, firstF<uintT, T>() );
 }

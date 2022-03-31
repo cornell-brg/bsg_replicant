@@ -44,7 +44,6 @@ static int __jj = mallopt( M_TRIM_THRESHOLD, -1 );
 #endif
 
 typedef unsigned int  uint;
-typedef unsigned long ulong;
 
 #define newA( __E, __n ) (__E*)malloc( ( __n ) * sizeof( __E ) )
 
@@ -102,13 +101,13 @@ struct EdgeMap_F {
 template <class T>
 struct _seq {
   T*   A;
-  long n;
+  int n;
   _seq()
   {
     A = NULL;
     n = 0;
   }
-  _seq( T* _A, long _n ) : A( _A ), n( _n ) {}
+  _seq( T* _A, int _n ) : A( _A ), n( _n ) {}
   void del() { free( A ); }
 };
 
@@ -302,7 +301,7 @@ template <class intT>
 intT sumFlagsSerial( bool* Fl, intT n )
 {
   intT r = 0;
-  if ( n >= 128 && ( n & 511 ) == 0 && ( (long)Fl & 3 ) == 0 ) {
+  if ( n >= 128 && ( n & 511 ) == 0 && ( (intptr_t)Fl & 3 ) == 0 ) {
     int* IFl = (int*)Fl;
     for ( int k = 0; k < ( n >> 9 ); k++ ) {
       int rr = 0;
@@ -394,8 +393,8 @@ inline bool CAS( ET* ptr, ET oldv, ET newv )
                                          *( (int*)&newv ) );
   }
   else if ( sizeof( ET ) == 8 ) {
-    return __sync_bool_compare_and_swap( (long*)ptr, *( (long*)&oldv ),
-                                         *( (long*)&newv ) );
+    return __sync_bool_compare_and_swap( (int*)ptr, *( (int*)&oldv ),
+                                         *( (int*)&newv ) );
   }
   else {
     std::cout << "CAS bad length : " << sizeof( ET ) << std::endl;
@@ -435,23 +434,12 @@ inline uint hashInt( uint a )
   return a;
 }
 
-inline ulong hashLong( ulong a )
-{
-  a = ( a + 0x7ed55d166bef7a1d ) + ( a << 12 );
-  a = ( a ^ 0xc761c23c510fa2dd ) ^ ( a >> 9 );
-  a = ( a + 0x165667b183a9c0e1 ) + ( a << 59 );
-  a = ( a + 0xd3a2646cab3487e3 ) ^ ( a << 49 );
-  a = ( a + 0xfd7046c5ef9ab54c ) + ( a << 3 );
-  a = ( a ^ 0xb55a4f090dd4a67b ) ^ ( a >> 32 );
-  return a;
-}
-
 // Remove duplicate integers in [0,...,n-1].
 // Assumes that flags is already allocated and cleared to UINT_E_MAX.
 // Sets all duplicate values in the array to UINT_E_MAX and resets flags
 // to UINT_E_MAX.
 template <class G>
-void remDuplicates( G& get_key, uintE* flags, long m, long n )
+void remDuplicates( G& get_key, uintE* flags, int m, int n )
 {
   appl::parallel_for( (size_t)0, (size_t)m, [&]( size_t i ) {
     uintE key = get_key( i );
@@ -630,7 +618,7 @@ inline bool write_min( ET* a, ET b, F less )
   return r;
 }
 
-// returns the log base 2 rounded up (works on ints or longs or unsigned
+// returns the log base 2 rounded up (works on ints or ints or unsigned
 // versions)
 template <class T>
 static int log2_up( T i )
