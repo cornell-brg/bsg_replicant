@@ -115,9 +115,14 @@ int kernel_appl_bfs (int argc, char **argv) {
                 graph<symmetricVertex> G = readGraph<symmetricVertex>(
                     iFile.c_str(), false, (bool)symmetric, false, false, device);
                 Compute(G, NULL, NULL);
-                std::cout << "G.V[1].getOutDegree() = " << G.V[1].getOutDegree() << std::endl;
-                for (int i = 0; i < G.V[1].getOutDegree(); i++) {
-                  std::cout << "G.V[1].getInNeighbor(" << i << ") = " << G.V[1].getInNeighbor(i) << std::endl;
+                // dump edges
+                uintE edges[G.m];
+                uint32_t idx = 0;
+                for (uint32_t v = 0; v < G.n; v++) {
+                  for (uint32_t e = 0; e <  G.V[v].getOutDegree(); e++) {
+                    edges[idx] = G.V[v].getOutNeighbor(e);
+                    idx++;
+                  }
                 }
 
                 /*****************************************************************************************************************
@@ -125,7 +130,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
 
                 eva_t device_result;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, G.m * sizeof(uint32_t), &device_result)); // buffer for return results
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
 
@@ -140,8 +145,6 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int N = FIB_IN;
-                int gsize = FIB_GSIZE;
                 const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
 
                 /*****************************************************************************************************************
@@ -157,21 +160,22 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[64];
+                uint32_t host_result[G.m];
                 void *src = (void *) ((intptr_t) device_result);;
                 void *dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.m * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
-                int32_t expected = host_fib(N);
-
-                if (host_result[0] != expected) {
-                  bsg_pr_err(BSG_RED("Mismatch: ") "fib %d = %d != expected %d\n", N, host_result[0], expected);
-                  return HB_MC_FAIL;
+                for (int i = 0; i < G.m; i++) {
+                  if (host_result[i] != edges[i]) {
+                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != edges[%d]: 0x%08" PRIx32 "\n",
+                                i, host_result[i], i, edges[i]);
+                    return HB_MC_FAIL;
+                  }
                 }
 
         }
