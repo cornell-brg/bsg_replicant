@@ -81,9 +81,9 @@ int kernel_appl_bfs (int argc, char **argv) {
         int rc;
 
         /*****************************************************************************************************************
-         * Ligra host code
-         ******************************************************************************************************************/
-
+        * Define path to binary.
+        * Initialize device, load binary and unfreeze tiles.
+        ******************************************************************************************************************/
         std::string bin_path  = argv[1];
         std::string test_name = argv[2];
         std::string iFile     = argv[3];
@@ -95,21 +95,10 @@ int kernel_appl_bfs (int argc, char **argv) {
         std::cout << "Ligra command line parsed -- iFile:" << iFile << " grain_size=" << grain_size
                   << " symmetric?=" << symmetric << " rounds=" << rounds << std::endl;
 
-        if (symmetric) {
-          graph<symmetricVertex> G = readGraph<symmetricVertex>(
-              iFile.c_str(), false, (bool)symmetric, false, false);
-          Compute(G, NULL, NULL);
-        } else {
-        }
-
-        bsg_pr_test_info("Running the Ligra BFS on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
-
-        /*****************************************************************************************************************
-        * Define path to binary.
-        * Initialize device, load binary and unfreeze tiles.
-        ******************************************************************************************************************/
         hb_mc_device_t device;
         BSG_CUDA_CALL(hb_mc_device_init(&device, test_name.c_str(), 0));
+
+        bsg_pr_test_info("Running the Ligra BFS on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         hb_mc_pod_id_t pod;
         hb_mc_device_foreach_pod_id(&device, pod)
@@ -118,6 +107,16 @@ int kernel_appl_bfs (int argc, char **argv) {
                 bsg_pr_info("Loading program for test %s onto pod %d\n", test_name.c_str(), pod);
                 BSG_CUDA_CALL(hb_mc_device_set_default_pod(&device, pod));
                 BSG_CUDA_CALL(hb_mc_device_program_init(&device, bin_path.c_str(), ALLOC_NAME, 0));
+
+                /*****************************************************************************************************************
+                 * Ligra host code
+                 ******************************************************************************************************************/
+                if (symmetric) {
+                  graph<symmetricVertex> G = readGraph<symmetricVertex>(
+                      iFile.c_str(), false, (bool)symmetric, false, false, device);
+                  Compute(G, NULL, NULL);
+                } else {
+                }
 
                 /*****************************************************************************************************************
                  * Allocate memory on the device.

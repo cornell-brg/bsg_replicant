@@ -64,19 +64,20 @@ public:
 template <class vertex>
 struct graph {
   vertex*    V;
+  eva_t      hb_V;
   int       n;
   int       m;
   bool       transposed;
   uintE*     flags;
   Deletable* D;
 
-  graph( vertex* _V, int _n, int _m, Deletable* _D )
-      : V( _V ), n( _n ), m( _m ), D( _D ), flags( NULL ), transposed( 0 )
+  graph( vertex* _V, eva_t _hb_V, int _n, int _m, Deletable* _D )
+      : V( _V ), hb_V( _hb_V), n( _n ), m( _m ), D( _D ), flags( NULL ), transposed( 0 )
   {
   }
 
-  graph( vertex* _V, int _n, int _m, Deletable* _D, uintE* _flags )
-      : V( _V ), n( _n ), m( _m ), D( _D ), flags( _flags ),
+  graph( vertex* _V, eva_t _hb_V, int _n, int _m, Deletable* _D, uintE* _flags )
+      : V( _V ), hb_V( _hb_V), n( _n ), m( _m ), D( _D ), flags( _flags ),
         transposed( 0 )
   {
   }

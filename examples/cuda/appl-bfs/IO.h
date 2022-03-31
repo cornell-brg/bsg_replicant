@@ -37,6 +37,12 @@
 #include "parallel.h"
 #include "quickSort.h"
 #include "utils.h"
+
+#include <bsg_manycore_cuda.h>
+#include <bsg_manycore_tile.h>
+#include <bsg_manycore_errno.h>
+#include <bsg_manycore_loader.h>
+
 using namespace std;
 
 typedef pair<uintE, uintE>             intPair;
@@ -188,7 +194,7 @@ words stringToWords( char* Str, int n )
 
 template <class vertex>
 graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
-                                 bool mmap )
+                                 bool mmap, hb_mc_device_t& device )
 {
   words W;
   if ( mmap ) {
@@ -207,11 +213,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
     _seq<char> S = readStringFromFile( fname );
     W            = stringToWords( S.A, S.n );
   }
-#ifndef WEIGHTED
   if ( W.Strings[0] != ( string ) "AdjacencyGraph" ) {
-#else
-  if ( W.Strings[0] != ( string ) "WeightedAdjacencyGraph" ) {
-#endif
     cout << "Bad input file" << endl;
     abort();
   }
@@ -219,21 +221,15 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
   int len = W.m - 1;
   int n   = atol( W.Strings[1] );
   int m   = atol( W.Strings[2] );
-#ifndef WEIGHTED
   if ( len != n + m + 2 ) {
-#else
-  if ( len != n + 2 * m + 2 ) {
-#endif
     cout << "Bad input file" << endl;
     abort();
   }
 
   uintT* offsets = newA( uintT, n );
-#ifndef WEIGHTED
   uintE* edges = newA( uintE, m );
-#else
-  intE* edges = newA( intE, 2 * m );
-#endif
+  eva_t hb_edges;
+  (hb_mc_device_malloc(&device, m * sizeof(uintE), &hb_edges));
 
   {
     for( int i = 0; i < n; i++ ) offsets[i] =
@@ -242,17 +238,15 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
   {
     for( int i = 0; i < m; i++ )
     {
-#ifndef WEIGHTED
       edges[i] = atol( W.Strings[i + n + 3] );
-#else
-      edges[2 * i]     = atol( W.Strings[i + n + 3] );
-      edges[2 * i + 1] = atol( W.Strings[i + n + m + 3] );
-#endif
     }
   }
   // W.del(); // to deal with performance bug in malloc
 
-  vertex* v = newA( vertex, n );
+  vertex* v      = newA( vertex, n );
+  vertex* host_v = newA( vertex, n );
+  eva_t hb_v;
+  (hb_mc_device_malloc(&device, n * sizeof(vertex), &hb_v));
 
   {
     for( uintT i = 0; i < n; i++ )
@@ -260,118 +254,40 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
       uintT o = offsets[i];
       uintT l = ( ( i == n - 1 ) ? m : offsets[i + 1] ) - offsets[i];
       v[i].setOutDegree( l );
-#ifndef WEIGHTED
+      host_v[i].setOutDegree( l );
       v[i].setOutNeighbors( edges + o );
-#else
-      v[i].setOutNeighbors( edges + 2 * o );
-#endif
+      host_v[i].setOutNeighbors( (uintE*)(intptr_t)(hb_edges + o) );
     }
+    // copy edges and v
+    (hb_mc_device_memcpy (&device,
+                                      ((void *) ((intptr_t) hb_edges)),
+                                      (&host_v[0]),
+                                      m * sizeof(uintE),
+                                      HB_MC_MEMCPY_TO_DEVICE));
+    (hb_mc_device_memcpy (&device,
+                                      ((void *) ((intptr_t) hb_v)),
+                                      (&host_v[0]),
+                                      n * sizeof(vertex),
+                                      HB_MC_MEMCPY_TO_DEVICE));
   }
 
   if ( !isSymmetric ) {
-    uintT* tOffsets = newA( uintT, n );
-    {
-      for( int i = 0; i < n; i++ ) tOffsets[i] = INT_T_MAX;
-    }
-#ifndef WEIGHTED
-    intPair* temp = newA( intPair, m );
-#else
-    intTriple* temp = newA( intTriple, m );
-#endif
-    {
-      for( int i = 0; i < n; i++ )
-      {
-        uintT o = offsets[i];
-        for ( uintT j = 0; j < v[i].getOutDegree(); j++ ) {
-#ifndef WEIGHTED
-          temp[o + j] = make_pair( v[i].getOutNeighbor( j ), i );
-#else
-          temp[o + j] =
-              make_pair( v[i].getOutNeighbor( j ),
-                         make_pair( i, v[i].getOutWeight( j ) ) );
-#endif
-        }
-      }
-    }
-    free( offsets );
-
-#ifndef WEIGHTED
-#ifndef LOWMEM
-    intSort::iSort( temp, m, n + 1, getFirst<uintE>() );
-#else
-    quickSort( temp, m, pairFirstCmp<uintE>() );
-#endif
-#else
-#ifndef LOWMEM
-    intSort::iSort( temp, m, n + 1, getFirst<intPair>() );
-#else
-    quickSort( temp, m, pairFirstCmp<intPair>() );
-#endif
-#endif
-
-    tOffsets[temp[0].first] = 0;
-#ifndef WEIGHTED
-    uintE* inEdges = newA( uintE, m );
-    inEdges[0]     = temp[0].second;
-#else
-    intE* inEdges = newA( intE, 2 * m );
-    inEdges[0]    = temp[0].second.first;
-    inEdges[1]    = temp[0].second.second;
-#endif
-    {
-      for( int i = 1; i < m; i++ )
-      {
-#ifndef WEIGHTED
-        inEdges[i] = temp[i].second;
-#else
-        inEdges[2 * i]     = temp[i].second.first;
-        inEdges[2 * i + 1] = temp[i].second.second;
-#endif
-        if ( temp[i].first != temp[i - 1].first ) {
-          tOffsets[temp[i].first] = i;
-        }
-      }
-    }
-
-    free( temp );
-
-    // fill in offsets of degree 0 vertices by taking closest non-zero
-    // offset to the right
-    sequence::scanIBack( tOffsets, tOffsets, n, minF<uintT>(), (uintT)m );
-
-    {
-      for( int i = 0; i < n; i++ )
-      {
-        uintT o = tOffsets[i];
-        uintT l = ( ( i == n - 1 ) ? m : tOffsets[i + 1] ) - tOffsets[i];
-        v[i].setInDegree( l );
-#ifndef WEIGHTED
-        v[i].setInNeighbors( inEdges + o );
-#else
-        v[i].setInNeighbors( inEdges + 2 * o );
-#endif
-      }
-    }
-
-    free( tOffsets );
-    Uncompressed_Mem<vertex>* mem =
-        new Uncompressed_Mem<vertex>( v, n, m, edges, inEdges );
-    return graph<vertex>( v, n, m, mem );
+    abort();
   }
   else {
     free( offsets );
     Uncompressed_Mem<vertex>* mem =
         new Uncompressed_Mem<vertex>( v, n, m, edges );
-    return graph<vertex>( v, n, m, mem );
+    return graph<vertex>( v, hb_v, n, m, mem );
   }
 }
 
 template <class vertex>
 graph<vertex> readGraph( const char* iFile, bool compressed, bool symmetric,
-                         bool binary, bool mmap )
+                         bool binary, bool mmap, hb_mc_device_t& device )
 {
   if ( binary )
     abort();
   else
-    return readGraphFromFile<vertex>( iFile, symmetric, mmap );
+    return readGraphFromFile<vertex>( iFile, symmetric, mmap, device );
 }
