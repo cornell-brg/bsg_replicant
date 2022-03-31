@@ -256,12 +256,12 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
       v[i].setOutDegree( l );
       host_v[i].setOutDegree( l );
       v[i].setOutNeighbors( edges + o );
-      host_v[i].setOutNeighbors( (uintE*)(intptr_t)(hb_edges + o) );
+      host_v[i].setOutNeighbors( (uintE*)(intptr_t)(hb_edges + o * sizeof(uintE)) );
     }
     // copy edges and v
     (hb_mc_device_memcpy (&device,
                                       ((void *) ((intptr_t) hb_edges)),
-                                      (&host_v[0]),
+                                      (&edges[0]),
                                       m * sizeof(uintE),
                                       HB_MC_MEMCPY_TO_DEVICE));
     (hb_mc_device_memcpy (&device,
