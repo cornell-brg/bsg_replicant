@@ -53,7 +53,7 @@
 */
 
 
-void host_vec_add (int *A, int *B, int *C, int size) {
+void host_vec_add (uint32_t *A, uint32_t *B, uint32_t *C, int size) {
         for (int i = 0; i < size; i ++) {
                 C[i] = A[i] + B[i];
         }
