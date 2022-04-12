@@ -41,6 +41,7 @@ struct BFS_F {
   inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
 };
 
+/*
 template <class vertex>
 void Compute( graph<vertex>& GA, char* out_file, char* ref_file )
 {
@@ -69,13 +70,7 @@ void Compute( graph<vertex>& GA, char* out_file, char* ref_file )
   Frontier.del();
   free( Parents );
 }
-
-uint32_t host_fib(uint32_t n) {
-  if (n < 2)
-    return n;
-  else
-    return host_fib(n-1) + host_fib(n-2);
-}
+*/
 
 int kernel_appl_bfs (int argc, char **argv) {
         int rc;
@@ -114,25 +109,33 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
                 graph<symmetricVertex> G = readGraph<symmetricVertex>(
                     iFile.c_str(), false, (bool)symmetric, false, false, device);
-                Compute(G, NULL, NULL);
-                // dump edges
-                uintE edges[G.m];
-                uint32_t idx = 0;
-                for (uint32_t v = 0; v < G.n; v++) {
-                  for (uint32_t e = 0; e <  G.V[v].getOutDegree(); e++) {
-                    edges[idx] = G.V[v].getOutNeighbor(e);
-                    idx++;
-                  }
-                }
 
                 /*****************************************************************************************************************
                  * Allocate memory on the device.
                  ******************************************************************************************************************/
 
                 eva_t device_result;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, G.m * sizeof(uint32_t), &device_result)); // buffer for return results
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, G.n * sizeof(uint32_t), &device_result)); // buffer for return results
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
+                /*****************************************************************************************************************
+                 * Run BFS natively
+                 ******************************************************************************************************************/
+
+                int32_t start = 0;
+                int32_t n     = G.n;
+                uintE* Parents = newA( uintE, n );
+                for (int32_t i = 0; i < n; i++) {
+                  Parents[i] = UINT_E_MAX;
+                }
+                Parents[start] = start;
+                vertexSubset Frontier( n, start ); // creates initial frontier
+                while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
+                  vertexSubset output = edgeMap( G, Frontier, BFS_F( Parents ) );
+                  Frontier.del();
+                  Frontier = output; // set new frontier
+                }
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -160,20 +163,20 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[G.m];
+                uint32_t host_result[G.n];
                 void *src = (void *) ((intptr_t) device_result);;
                 void *dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.m * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.n * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
-                for (int i = 0; i < G.m; i++) {
-                  if (host_result[i] != edges[i]) {
-                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != edges[%d]: 0x%08" PRIx32 "\n",
-                                i, host_result[i], i, edges[i]);
+                for (int i = 0; i < G.n; i++) {
+                  if (host_result[i] != Parents[i]) {
+                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != Parents[%d]: 0x%08" PRIx32 "\n",
+                                i, host_result[i], i, Parents[i]);
                     return HB_MC_FAIL;
                   }
                 }
