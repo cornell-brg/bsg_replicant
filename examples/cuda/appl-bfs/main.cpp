@@ -41,36 +41,6 @@ struct BFS_F {
   inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
 };
 
-/*
-template <class vertex>
-void Compute( graph<vertex>& GA, char* out_file, char* ref_file )
-{
-  int32_t start = 0;
-  int32_t n     = GA.n;
-  // creates Parents array, initialized to all -1, except for start
-  uintE* Parents = newA( uintE, n );
-  appl::parallel_for( 0, n,
-                      [&]( int32_t i ) { Parents[i] = UINT_E_MAX; } );
-  Parents[start] = start;
-  vertexSubset Frontier( n, start ); // creates initial frontier
-  while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
-    vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents ) );
-    Frontier.del();
-    Frontier = output; // set new frontier
-  }
-
-  // verify or dump outputs
-  if ( ref_file ) {
-    verify<uintE>( Parents, ref_file, n );
-  }
-  else if ( out_file ) {
-    output<uintE>( Parents, out_file, n );
-  }
-
-  Frontier.del();
-  free( Parents );
-}
-*/
 
 int kernel_appl_bfs (int argc, char **argv) {
         int rc;
