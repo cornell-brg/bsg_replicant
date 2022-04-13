@@ -23,11 +23,16 @@
 
 struct BFS_F {
   uintE* Parents;
-  BFS_F( uintE* _Parents ) : Parents( _Parents ) {}
+  uintE* bfsLvls;
+  uintE  lvl;
+  BFS_F( uintE* _Parents, uintE* _bfsLvls, uintE  _lvl )
+    : Parents( _Parents ), bfsLvls( _bfsLvls ), lvl( _lvl ) {}
+
   inline bool update( uintE s, uintE d )
   { // Update
     if ( Parents[d] == UINT_E_MAX ) {
       Parents[d] = s;
+      bfsLvls[d] = lvl;
       return 1;
     }
     else
@@ -96,15 +101,21 @@ int kernel_appl_bfs (int argc, char **argv) {
                 int32_t start = 0;
                 int32_t n     = G.n;
                 uintE* Parents = newA( uintE, n );
+                uintE* bfsLvls = newA( uintE, n );
                 for (int32_t i = 0; i < n; i++) {
                   Parents[i] = UINT_E_MAX;
+                  bfsLvls[i] = UINT_E_MAX;
                 }
+
                 Parents[start] = start;
                 vertexSubset Frontier( n, start ); // creates initial frontier
+
+                uintE lvl = 0;
                 while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
-                  vertexSubset output = edgeMap( G, Frontier, BFS_F( Parents ) );
+                  vertexSubset output = edgeMap( G, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
                   Frontier.del();
                   Frontier = output; // set new frontier
+                  lvl++;
                 }
 
                 /*****************************************************************************************************************
@@ -144,9 +155,9 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
-                  if (host_result[i] != Parents[i]) {
-                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != Parents[%d]: 0x%08" PRIx32 "\n",
-                                i, host_result[i], i, Parents[i]);
+                  if (host_result[i] != bfsLvls[i]) {
+                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
+                                i, host_result[i], i, bfsLvls[i]);
                     return HB_MC_FAIL;
                   }
                 }
