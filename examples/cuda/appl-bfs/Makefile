@@ -52,10 +52,6 @@ KERNEL_NAME = appl-bfs
 # Host code compilation flags and flow
 ###############################################################################
 
-# Fib inputs
-FIB_IN    ?= 10
-FIB_GSIZE ?= 8
-
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= 2
 TILE_GROUP_DIM_Y ?= 2
@@ -65,7 +61,7 @@ TEST_SOURCES = main.cpp
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
 CDEFINES +=
-CXXDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -DFIB_IN=$(FIB_IN) -DFIB_GSIZE=$(FIB_GSIZE)
+CXXDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -I$(EXAMPLES_PATH)/cuda/ligra/
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
 CFLAGS   += -std=c99 $(FLAGS)
