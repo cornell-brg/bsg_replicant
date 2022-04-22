@@ -15,6 +15,7 @@ vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/applrts
 # APPL implemenation
 ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_CXXFLAGS  +=-DAPPL_IMPL_APPLRTS
+	RISCV_CXXFLAGS  +=-fno-rtti
 	RISCV_TARGET_OBJECTS += appl-runtime.rvo
 	RISCV_TARGET_OBJECTS += applrts-config.rvo
 	RISCV_TARGET_OBJECTS += applrts-runtime.rvo
