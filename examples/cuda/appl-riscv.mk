@@ -4,6 +4,7 @@ _REPO_ROOT ?= $(shell git rev-parse --show-toplevel)
 
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/applrts/
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/appl/
+BSG_ELF_STACK_PTR ?= 0x0003fffc
 
 vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/appl
 vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/appl
@@ -37,3 +38,4 @@ endif
 
 # include riscv builddefs
 include $(_REPO_ROOT)/examples/cuda/riscv.mk
+RISCV_LD = $(_RISCV_GXX)
