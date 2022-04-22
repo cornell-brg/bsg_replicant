@@ -272,6 +272,7 @@ LIBBSG_MANYCORE_OBJECTS  += bsg_tile_config_vars.c.rvo
 LIBBSG_MANYCORE_OBJECTS  += bsg_printf.c.rvo
 LIBBSG_MANYCORE_OBJECTS  += bsg_barrier_amoadd.S.rvo
 LIBBSG_MANYCORE_OBJECTS  += bsg_cuda_lite_barrier.c.rvo
+LIBBSG_MANYCORE_OBJECTS  += bsg_mcs_mutex.S.rvo
 
 libbsg_manycore_riscv.a: $(LIBBSG_MANYCORE_OBJECTS)
 	$(RISCV_AR) rcs $@ $^
