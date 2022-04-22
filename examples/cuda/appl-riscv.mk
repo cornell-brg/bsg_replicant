@@ -15,10 +15,10 @@ vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/applrts
 # APPL implemenation
 ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_CXXFLAGS  +=-DAPPL_IMPL_APPLRTS
-	RISCV_TARGET_OBJECTS += appl-runtime.o
-	RISCV_TARGET_OBJECTS += applrts-config.o
-	RISCV_TARGET_OBJECTS += applrts-runtime.o
-	RISCV_TARGET_OBJECTS += applrts-scheduler.o
+	RISCV_TARGET_OBJECTS += appl-runtime.rvo
+	RISCV_TARGET_OBJECTS += applrts-config.rvo
+	RISCV_TARGET_OBJECTS += applrts-runtime.rvo
+	RISCV_TARGET_OBJECTS += applrts-scheduler.rvo
 endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_SERIAL)
@@ -31,7 +31,7 @@ ifeq ($(APPL_IMPL), APPL_IMPL_CELLO)
 	RISCV_CXXFLAGS +=-I$(CELLO_DIR)/include
 	RISCV_CXXFLAGS +=-I$(CELLO_DIR)/arch/hammerblade/include
 	RISCV_CXXFLAGS += -fno-threadsafe-statics
-	RISCV_TARGET_OBJECTS += appl-runtime.o
+	RISCV_TARGET_OBJECTS += appl-runtime.rvo
 endif
 
 # include riscv builddefs
