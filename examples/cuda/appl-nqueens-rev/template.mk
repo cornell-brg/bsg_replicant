@@ -56,6 +56,7 @@ include app_path.mk
 
 NQUEENS_IN    ?= $(nqueens-in)
 NQUEENS_GSIZE ?= $(grain-size)
+APPL_IMPL     ?= APPL_IMPL_$(appl-impl)
 
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= $(tgx)
@@ -93,7 +94,8 @@ include $(EXAMPLES_PATH)/link.mk
 
 # BSG_MANYCORE_KERNELS is a list of manycore executables that should
 # be built before executing.
-RISCV_CCPPFLAGS += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
+RISCV_CCPPFLAGS += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X)
+RISCV_CCPPFLAGS += -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
 RISCV_TARGET_OBJECTS = kernel_appl_nqueens.rvo
 BSG_MANYCORE_KERNELS = main.riscv
 
