@@ -18,7 +18,7 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 129
+#define BUF_FACTOR 2049
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 int kernel_appl_amo_test (int argc, char **argv) {
