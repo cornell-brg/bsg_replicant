@@ -149,6 +149,11 @@ int kernel_appl_matmul (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Allocate memory on the device for A, B and C.
                  ******************************************************************************************************************/
+                if ( !isPowerOfTwo( N ) ) {
+                  printf("Input size must be a power of two!");
+                  return HB_MC_FAIL;
+                }
+
                 if ( GRAIN_SIZE < 4 || !isPowerOfTwo( GRAIN_SIZE ) ) {
                   printf("Grain size must >= 4 and is power of 2");
                   return HB_MC_FAIL;
