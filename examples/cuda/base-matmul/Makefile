@@ -46,26 +46,29 @@ SPMD_SRC_PATH = $(BSG_MANYCORE_DIR)/software/spmd
 CUDALITE_SRC_PATH = $(SPMD_SRC_PATH)/bsg_cuda_lite_runtime
 
 # KERNEL_NAME is the name of the CUDA-Lite Kernel
-KERNEL_NAME = appl-bfs
+KERNEL_NAME = base-matmul
 
 ###############################################################################
 # Host code compilation flags and flow
 ###############################################################################
+
+# Matrix Size
+MATRIX_N ?= 32
 
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= 2
 TILE_GROUP_DIM_Y ?= 2
 
 # TEST_SOURCES is a list of source files that need to be compiled
-TEST_SOURCES = main.cpp
+TEST_SOURCES = main.c
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
-CDEFINES +=
-CXXDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -I$(EXAMPLES_PATH)/cuda/ligra/
+CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -DMATRIX_N=$(MATRIX_N)
+CXXDEFINES += 
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
 CFLAGS   += -std=c99 $(FLAGS)
-CXXFLAGS += -std=c++14 $(FLAGS)
+CXXFLAGS += -std=c++11 $(FLAGS)
 
 # compilation.mk defines rules for compilation of C/C++
 include $(EXAMPLES_PATH)/compilation.mk
@@ -85,7 +88,7 @@ include $(EXAMPLES_PATH)/link.mk
 
 # BSG_MANYCORE_KERNELS is a list of manycore executables that should
 # be built before executing.
-BSG_MANYCORE_KERNELS = $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv
+BSG_MANYCORE_KERNELS ?= $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv
 
 $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv: $(BSG_MACHINE_PATH)/Makefile.machine.include
 	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
@@ -105,7 +108,7 @@ $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv: $(BSG_MACHINE_PATH)/Makefile.mac
 #
 # SIM_ARGS: Use this to pass arguments to the simulator
 ###############################################################################
-C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME) haha.txt 16 1 42
+C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME)
 
 SIM_ARGS ?=
 

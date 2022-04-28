@@ -21,33 +21,73 @@
 #define BUF_FACTOR 2049
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
-struct BFS_F {
-  uintE* Parents;
-  uintE* bfsLvls;
-  uintE  lvl;
-  BFS_F( uintE* _Parents, uintE* _bfsLvls, uintE  _lvl )
-    : Parents( _Parents ), bfsLvls( _bfsLvls ), lvl( _lvl ) {}
-
+struct CC_F {
+  uintE *IDs, *prevIDs;
+  CC_F( uintE* _IDs, uintE* _prevIDs ) : IDs( _IDs ), prevIDs( _prevIDs )
+  {
+  }
   inline bool update( uintE s, uintE d )
-  { // Update
-    if ( Parents[d] == UINT_E_MAX ) {
-      Parents[d] = s;
-      bfsLvls[d] = lvl;
-      return 1;
+  { // Update function writes min ID
+    uintE origID = IDs[d];
+    if ( IDs[s] < origID ) {
+      IDs[d] = min( origID, IDs[s] );
+      if ( origID == prevIDs[d] )
+        return 1;
     }
-    else
-      return 0;
+    return 0;
   }
   inline bool updateAtomic( uintE s, uintE d )
-  { // atomic version of Update
-    return update( s, d );
+  { // atomic Update
+    uintE origID = IDs[d];
+    return ( writeMin( &IDs[d], IDs[s] ) && origID == prevIDs[d] );
   }
-  // cond function checks if vertex has been visited yet
-  inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
+  inline bool cond( uintE d ) { return cond_true( d ); } // does nothing
 };
 
+// function used by vertex map to sync prevIDs with IDs
+struct CC_Vertex_F {
+  uintE *IDs, *prevIDs;
+  CC_Vertex_F( uintE* _IDs, uintE* _prevIDs )
+      : IDs( _IDs ), prevIDs( _prevIDs )
+  {
+  }
+  inline bool operator()( uintE i )
+  {
+    prevIDs[i] = IDs[i];
+    return 1;
+  }
+};
 
-int kernel_appl_bfs (int argc, char **argv) {
+template <class vertex>
+void Compute( graph<vertex>& GA, uintE* goldenIDs )
+{
+  size_t   n   = GA.n;
+  uintE *IDs = newA( uintE, n ), *prevIDs = newA( uintE, n );
+  appl::parallel_for( size_t( 0 ), n, [&]( size_t i ) { IDs[i] = i; } );
+
+  bool* frontier = newA( bool, n );
+  appl::parallel_for( size_t( 0 ), n, [&]( size_t i ) { frontier[i] = 1; } );
+  vertexSubset Frontier(
+      n, n, frontier ); // initial frontier contains all vertices
+
+  while ( !Frontier.isEmpty() ) { // iterate until IDS converge
+    vertexMap( Frontier, CC_Vertex_F( IDs, prevIDs ) );
+    vertexSubset output = edgeMap( GA, Frontier, CC_F( IDs, prevIDs ) );
+    Frontier.del();
+    Frontier = output;
+  }
+
+  // verify or dump outputs
+  for (size_t i = 0; i < n; i++) {
+    goldenIDs[i] = IDs[i];
+  }
+
+  Frontier.del();
+  free( IDs );
+  free( prevIDs );
+}
+
+int kernel_appl_components (int argc, char **argv) {
         int rc;
 
         /*****************************************************************************************************************
@@ -69,7 +109,7 @@ int kernel_appl_bfs (int argc, char **argv) {
         hb_mc_device_t device;
         BSG_CUDA_CALL(hb_mc_device_init(&device, test_name.c_str(), 0));
 
-        bsg_pr_test_info("Running the Ligra BFS on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
+        bsg_pr_test_info("Running the Ligra Components on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         hb_mc_pod_id_t pod;
         hb_mc_device_foreach_pod_id(&device, pod)
@@ -95,28 +135,10 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
 
                 /*****************************************************************************************************************
-                 * Run BFS natively
+                 * Run Components natively
                  ******************************************************************************************************************/
-
-                int32_t start = 0;
-                int32_t n     = G.n;
-                uintE* Parents = newA( uintE, n );
-                uintE* bfsLvls = newA( uintE, n );
-                for (int32_t i = 0; i < n; i++) {
-                  Parents[i] = UINT_E_MAX;
-                  bfsLvls[i] = UINT_E_MAX;
-                }
-
-                Parents[start] = start;
-                vertexSubset Frontier( n, start ); // creates initial frontier
-
-                uintE lvl = 0;
-                while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
-                  vertexSubset output = edgeMap( G, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
-                  Frontier.del();
-                  Frontier = output; // set new frontier
-                  lvl++;
-                }
+                uintE* goldenIDs = newA( uintE, G.n );
+                Compute(G, goldenIDs);
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -134,7 +156,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_components", 5, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -155,9 +177,10 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
-                  if (host_result[i] != bfsLvls[i]) {
-                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
-                                i, host_result[i], i, bfsLvls[i]);
+                  printf("IDs[%d] = %d\n", i, host_result[i]);
+                  if (host_result[i] != goldenIDs[i]) {
+                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != golden[%d]: 0x%08" PRIx32 "\n",
+                                i, host_result[i], i, goldenIDs[i]);
                     return HB_MC_FAIL;
                   }
                 }
@@ -168,4 +191,4 @@ int kernel_appl_bfs (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_appl_bfs", kernel_appl_bfs);
+declare_program_main("test_appl_components", kernel_appl_components);

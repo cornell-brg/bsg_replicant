@@ -10,8 +10,10 @@
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <bsg_manycore_regression.h>
+#include <iostream>
 
-#define INPUT "knapsack-small-1.input"
+// Ligra headers
+#include "ligra.h"
 
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
@@ -19,89 +21,50 @@
 #define BUF_FACTOR 2049
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
-/* every item in the knapsack has a weight and a value */
-#define MAX_ITEMS 256
-
-struct item {
-  int value;
-  int weight;
-};
-
-int compare( struct item* a, struct item* b ) {
-  float c =
-      ( (float)a->value / a->weight ) - ( (float)b->value / b->weight );
-
-  if ( c > 0 )
-    return -1;
-  if ( c < 0 )
-    return 1;
-  return 0;
-}
-
-int read_input( const char* filename, struct item* items, int* capacity,
-                int* n )
-{
-  int   i;
-  FILE* f;
-
-  if ( filename == NULL )
-    filename = "\0";
-  f = fopen( filename, "r" );
-  if ( f == NULL ) {
-    fprintf( stderr, "open_input(\"%s\") failed\n", filename );
-    return -1;
-  }
-  /* format of the input: #items capacity value1 weight1 ... */
-  fscanf( f, "%d", n );
-  fscanf( f, "%d", capacity );
-
-  for ( i = 0; i < *n; ++i )
-    fscanf( f, "%d %d", &items[i].value, &items[i].weight );
-
-  fclose( f );
-
-  /* sort the items on decreasing order of value/weight */
-  /* cilk2c is fascist in dealing with pointers, whence the ugly cast */
-  qsort( items, *n, sizeof( struct item ),
-         (int ( * )( const void*, const void* ))compare );
-
-  return 0;
-}
-
-int kernel_appl_knapsack (int argc, char **argv) {
+int kernel_appl_amo_test (int argc, char **argv) {
         int rc;
-        char *bin_path, *test_name;
-        struct arguments_path args = {NULL, NULL};
-
-        argp_parse (&argp_path, argc, argv, 0, 0, &args);
-        bin_path = args.path;
-        test_name = args.name;
-
-        bsg_pr_test_info("Running the Cilk Knapsack WS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
-
-        srand(time);
 
         /*****************************************************************************************************************
         * Define path to binary.
         * Initialize device, load binary and unfreeze tiles.
         ******************************************************************************************************************/
+        std::string bin_path  = argv[1];
+        std::string test_name = argv[2];
+        std::string iFile     = argv[3];
+        uint32_t grain_size   = atoi(argv[4]);
+        uint32_t symmetric    = atoi(argv[5]);
+        uint32_t rounds       = atoi(argv[6]);
+
+        // debug
+        std::cout << "Ligra command line parsed -- iFile:" << iFile << " grain_size=" << grain_size
+                  << " symmetric?=" << symmetric << " rounds=" << rounds << std::endl;
+        std::cout << "size of symmetricVertex " << sizeof(symmetricVertex) << std::endl;
+
         hb_mc_device_t device;
-        BSG_CUDA_CALL(hb_mc_device_init(&device, test_name, 0));
+        BSG_CUDA_CALL(hb_mc_device_init(&device, test_name.c_str(), 0));
+
+        bsg_pr_test_info("Running the Ligra AMO tests on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         hb_mc_pod_id_t pod;
         hb_mc_device_foreach_pod_id(&device, pod)
         {
-                bsg_pr_info("Loading program for test %s onto pod %d\n", test_name, pod);
+
+                bsg_pr_info("Loading program for test %s onto pod %d\n", test_name.c_str(), pod);
                 BSG_CUDA_CALL(hb_mc_device_set_default_pod(&device, pod));
-                BSG_CUDA_CALL(hb_mc_device_program_init(&device, bin_path, ALLOC_NAME, 0));
+                BSG_CUDA_CALL(hb_mc_device_program_init(&device, bin_path.c_str(), ALLOC_NAME, 0));
+
+                /*****************************************************************************************************************
+                 * Ligra host code
+                 ******************************************************************************************************************/
+                graph<symmetricVertex> G = readGraph<symmetricVertex>(
+                    iFile.c_str(), false, (bool)symmetric, false, false, device);
 
                 /*****************************************************************************************************************
                  * Allocate memory on the device.
                  ******************************************************************************************************************/
 
                 eva_t device_result;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
-
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, G.n * sizeof(uint32_t), &device_result)); // buffer for return results
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
 
@@ -116,26 +79,12 @@ int kernel_appl_knapsack (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int N = -1;
-                int capacity = -1;
-                struct item items[MAX_ITEMS];
-                if (read_input( INPUT, items, &capacity, &N )) {
-                    return HB_MC_FAIL;
-                }
-
-                eva_t items_device;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(struct item), &items_device));
-
-                void *dst = (void *) ((intptr_t) items_device);
-                void *src = (void *) &items[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(struct item), HB_MC_MEMCPY_TO_DEVICE));
-
-                int cuda_argv[5] = {device_result, items_device, N, capacity, dram_buffer};
+                const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_knapsack", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_amo_test", 5, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -145,19 +94,29 @@ int kernel_appl_knapsack (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[64];
-                src = (void *) ((intptr_t) device_result);;
-                dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                uint32_t host_result[G.n];
+                void *src = (void *) ((intptr_t) device_result);;
+                void *dst = (void *) &host_result[0];
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.n * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
+
+                int golden[4] = {14850, 61801, 0, -1};
+                for (int i = 0; i < 4; i++) {
+                  if (host_result[i] != golden[i]) {
+                     bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != golden[%d]: 0x%08" PRIx32 "\n",
+                                i, host_result[i], i, golden[i]);
+                    return HB_MC_FAIL;
+                  }
+                }
+
         }
         BSG_CUDA_CALL(hb_mc_device_finish(&device));
 
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_appl_knapsack", kernel_appl_knapsack);
+declare_program_main("test_appl_amo_test", kernel_appl_amo_test);

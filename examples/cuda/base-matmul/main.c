@@ -39,130 +39,87 @@
 #include <bsg_manycore_regression.h>
 
 #define ALLOC_NAME "default_allocator"
-
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
 #define BUF_FACTOR 2049
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
-/* Define the size of a block. */
-#ifndef BLOCK_SIZE
-#define BLOCK_SIZE 4
-#endif
+#define N MATRIX_N
+#define GRAIN_SIZE 32
 
-/* Define the default matrix size. */
-#ifndef DEFAULT_SIZE
-#define DEFAULT_SIZE (16 * BLOCK_SIZE)
-#endif
+#define REAL float
 
-/* A block is a 2D array of floats. */
-typedef float Block[BLOCK_SIZE][BLOCK_SIZE];
-#define BLOCK(B,I,J) (B[I][J])
-
-/* A matrix is a 1D array of blocks. */
-typedef Block *Matrix;
-#define MATRIX(M,I,J) ((M)[(I)*nBlocks+(J)])
-
-/* Matrix size in blocks. */
-static int nBlocks;
-
-#define N 32
-
-/****************************************************************************\
- * Utility routines.
-\****************************************************************************/
-
-/*
- * init_matrix - Fill in matrix M with random values.
- */
-static void init_matrix(Matrix M, int nb)
-{
-  int I, J, K, i, j, k;
-
-  /* Initialize random number generator. */
-  srand(1);
-
-  /* For each element of each block, fill in random value. */
-  for (I = 0; I < nb; I++) {
-    for (J = 0; J < nb; J++) {
-      for (i = 0; i < BLOCK_SIZE; i++) {
-        for (j = 0; j < BLOCK_SIZE; j++) {
-          BLOCK(MATRIX(M, I, J), i, j) =
-            ((float)rand()) / (float)RAND_MAX;
-        }
-      }
-    }
-  }
-
-  /* Inflate diagonal entries. */
-  for (K = 0; K < nb; K++)
-    for (k = 0; k < BLOCK_SIZE; k++)
-      BLOCK(MATRIX(M, K, K), k, k) *= 10.0;
-}
-
-/*
- * print_matrix - Print matrix M.
- */
-static void print_matrix(Matrix M, int nb)
+void print( REAL* A, int n )
 {
   int i, j;
 
-  /* Print out matrix. */
-  for (i = 0; i < nb * BLOCK_SIZE; i++) {
-    for (j = 0; j < nb * BLOCK_SIZE; j++)
-      printf(" %6.4f",
-             BLOCK(MATRIX(M, i / BLOCK_SIZE, j / BLOCK_SIZE),
-                   i % BLOCK_SIZE, j % BLOCK_SIZE));
+  for ( i = 0; i < n; i++ ) {
+    for ( j = 0; j < n; j++ ) {
+      printf("%f ", A[i * n + j]);
+    }
     printf("\n");
   }
 }
 
-/*
- * test_result - Check that matrix LU contains LU decomposition of M.
- */
-static int test_result(Matrix LU, Matrix M, int nb)
+void zero( REAL* A, int n )
 {
-  int I, J, K, i, j, k;
-  float diff, max_diff;
-  float v;
+  int i, j;
 
-  /* Initialize test. */
-  max_diff = 0.0;
-
-  /* Find maximum difference between any element of LU and M. */
-  for (i = 0; i < nb * BLOCK_SIZE; i++)
-    for (j = 0; j < nb * BLOCK_SIZE; j++) {
-      I = i / BLOCK_SIZE;
-      J = j / BLOCK_SIZE;
-      v = 0.0;
-      for (k = 0; k < i && k <= j; k++) {
-        K = k / BLOCK_SIZE;
-        v += BLOCK(MATRIX(LU, I, K), i % BLOCK_SIZE,
-                   k % BLOCK_SIZE) *
-          BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE,
-                j % BLOCK_SIZE);
-      }
-      if (k == i && k <= j) {
-        K = k / BLOCK_SIZE;
-        v += BLOCK(MATRIX(LU, K, J), k % BLOCK_SIZE,
-                   j % BLOCK_SIZE);
-      }
-      diff = fabs(BLOCK(MATRIX(M, I, J), i % BLOCK_SIZE,
-                        j % BLOCK_SIZE) - v);
-      if (diff > max_diff) {
-        max_diff = diff;
-        printf("update max diff -> %f at (%d, %d)\n", max_diff, i, j);
-      }
+  for ( i = 0; i < n; i++ ) {
+    for ( j = 0; j < n; j++ ) {
+      A[i * n + j] = 0.0;
     }
-
-  /* Check maximum difference against threshold. */
-  if (max_diff > 0.00001)
-    return 0;
-  else
-    return 1;
+  }
 }
 
-int kernel_lu (int argc, char **argv) {
+void init( REAL* A, int n )
+{
+  int i, j;
+
+  for ( i = 0; i < n; i++ ) {
+    for ( j = 0; j < n; j++ ) {
+      A[i * n + j] = (REAL)rand() / (REAL)(RAND_MAX / 5.0f);
+    }
+  }
+}
+
+double maxerror( REAL* A, REAL* B, int n )
+{
+  int    i, j;
+  double error = 0.0;
+
+  for ( i = 0; i < n; i++ ) {
+    for ( j = 0; j < n; j++ ) {
+      double diff = ( A[i * n + j] - B[i * n + j] ) / A[i * n + j];
+      if ( diff < 0 )
+        diff = -diff;
+      if ( diff > error )
+        error = diff;
+    }
+  }
+  return error;
+}
+
+void iter_matmul( REAL* A, REAL* B, REAL* C, int n )
+{
+  int i, j, k;
+
+  for ( i = 0; i < n; i++ )
+    for ( k = 0; k < n; k++ ) {
+      REAL c = 0.0;
+      for ( j = 0; j < n; j++ )
+        c += A[i * n + j] * B[j * n + k];
+      C[i * n + k] = c;
+    }
+}
+
+/* Function to check if x is power of 2*/
+int isPowerOfTwo( int n )
+{
+  return ( ceil( log2( n ) ) == floor( log2( n ) ) );
+}
+
+int kernel_appl_matmul (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -171,7 +128,7 @@ int kernel_lu (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the LU Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
+        bsg_pr_test_info("Running the Cilk5 MatMul WS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         srand(time);
 
@@ -181,21 +138,6 @@ int kernel_lu (int argc, char **argv) {
         ******************************************************************************************************************/
         hb_mc_device_t device;
         BSG_CUDA_CALL(hb_mc_device_init(&device, test_name, 0));
-
-        if ( N < BLOCK_SIZE ) {
-          printf("n needs to be at least %d\n", BLOCK_SIZE);
-          return HB_MC_FAIL;
-        }
-
-        /* Check that matrix is power-of-2 sized. */
-        int v = N;
-        while (!((unsigned) v & (unsigned) 1)) {
-          v >>= 1;
-        }
-        if (v != 1) {
-          printf("n needs to be a power of 2");
-          return HB_MC_FAIL;
-        }
 
         hb_mc_pod_id_t pod;
         hb_mc_device_foreach_pod_id(&device, pod)
@@ -207,10 +149,20 @@ int kernel_lu (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Allocate memory on the device for A, B and C.
                  ******************************************************************************************************************/
+                if ( !isPowerOfTwo( N ) ) {
+                  printf("Input size must be a power of two!");
+                  return HB_MC_FAIL;
+                }
 
-                nBlocks = N / BLOCK_SIZE;
-                eva_t M_device;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(float), &M_device)); /* allocate M on the device */
+                if ( GRAIN_SIZE < 4 || !isPowerOfTwo( GRAIN_SIZE ) ) {
+                  printf("Grain size must >= 4 and is power of 2");
+                  return HB_MC_FAIL;
+                }
+
+                eva_t A_device, B_device, C_device;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &A_device)); /* allocate A[N*N] on the device */
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &B_device)); /* allocate B[N*N] on the device */
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &C_device)); /* allocate C[N*N] on the device */
 
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
@@ -218,17 +170,31 @@ int kernel_lu (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Allocate memory on the host for A & B and initialize with random values.
                  ******************************************************************************************************************/
-                Matrix M_host = (Matrix) malloc(N * N * sizeof(float));
-                init_matrix(M_host, nBlocks);
+                REAL * A, *B, *C1, *C2;
+                A  = (REAL*)malloc( N * N * sizeof( REAL ) );
+                B  = (REAL*)malloc( N * N * sizeof( REAL ) );
+                C1 = (REAL*)malloc( N * N * sizeof( REAL ) );
+                C2 = (REAL*)malloc( N * N * sizeof( REAL ) );
 
-                print_matrix(M_host, nBlocks);
+                init( A, N );
+                init( B, N );
+                zero( C1, N );
+                zero( C2, N );
+
+                print( A, N );
+                printf("----\n");
+                print( B, N );
 
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                void *dst = (void *) ((intptr_t) M_device);
-                void *src = (void *) &M_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * N * sizeof(float), HB_MC_MEMCPY_TO_DEVICE)); /* Copy A to the device  */
+                void *dst = (void *) ((intptr_t) A_device);
+                void *src = (void *) &A[0];
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * N * sizeof(REAL), HB_MC_MEMCPY_TO_DEVICE)); /* Copy A to the device  */
+
+                dst = (void *) ((intptr_t) B_device);
+                src = (void *) &B[0];
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * N * sizeof(REAL), HB_MC_MEMCPY_TO_DEVICE)); /* Copy B to the device */
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -241,12 +207,12 @@ int kernel_lu (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[3] = {M_device, N, dram_buffer};
+                int cuda_argv[6] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_lu", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_matmul", 6, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -256,10 +222,9 @@ int kernel_lu (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result matrix back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                Matrix LU_host = (Matrix) malloc(N * N * sizeof(float));
-                src = (void *) ((intptr_t) M_device);
-                dst = (void *) &LU_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * N * sizeof(float), HB_MC_MEMCPY_TO_HOST)); /* copy C to the host */
+                src = (void *) ((intptr_t) C_device);
+                dst = (void *) &C1[0];
+                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * N * sizeof(REAL), HB_MC_MEMCPY_TO_HOST)); /* copy C to the host */
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
@@ -269,12 +234,14 @@ int kernel_lu (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Calculate the expected result using host code and compare the results.
                  ******************************************************************************************************************/
+                iter_matmul( A, B, C2, N );
+                double err = maxerror( C1, C2, N );
+                printf("max error = %f\n", err);
+                print(C1, N);
+                printf("----\n");
+                print(C2, N);
 
-                print_matrix(LU_host, nBlocks);
-                int success = test_result(LU_host, M_host, nBlocks);
-                free(M_host);
-                free(LU_host);
-                if (!success) {
+                if (err > 0.01) {
                         return HB_MC_FAIL;
                 }
         }
@@ -283,4 +250,4 @@ int kernel_lu (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_appl_lu", kernel_lu);
+declare_program_main("test_appl_matmul", kernel_appl_matmul);

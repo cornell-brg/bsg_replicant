@@ -46,7 +46,7 @@ SPMD_SRC_PATH = $(BSG_MANYCORE_DIR)/software/spmd
 CUDALITE_SRC_PATH = $(SPMD_SRC_PATH)/bsg_cuda_lite_runtime
 
 # KERNEL_NAME is the name of the CUDA-Lite Kernel
-KERNEL_NAME = appl-bfs
+KERNEL_NAME = appl-kcore
 
 ###############################################################################
 # Host code compilation flags and flow
