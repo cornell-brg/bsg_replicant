@@ -35,6 +35,8 @@ PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/features/tracer/simulation/bsg_manycore
 PLATFORM_REGRESSION_CSOURCES += $(LIBRARIES_PATH)/platforms/bigblade-vcs/bsg_manycore_regression_platform.c
 
 include $(LIBRARIES_PATH)/features/dma/simulation/feature.mk
+include $(LIBRARIES_PATH)/features/tracer/simulation/feature.mk
+include $(LIBRARIES_PATH)/features/pc_histogram/simulation/feature.mk
 
 PLATFORM_OBJECTS += $(patsubst %cpp,%o,$(PLATFORM_CXXSOURCES))
 PLATFORM_OBJECTS += $(patsubst %c,%o,$(PLATFORM_CSOURCES))
