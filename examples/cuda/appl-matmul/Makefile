@@ -53,7 +53,7 @@ KERNEL_NAME = appl-matmul
 ###############################################################################
 
 # Matrix Size
-MATRIX_N ?= 32
+MATRIX_N ?= 256
 
 # Tile Group Dimensions
 TILE_GROUP_DIM_X ?= 2
@@ -135,3 +135,5 @@ clean:
 	$(MAKE) -j1 -C $(CUDALITE_SRC_PATH)/$(KERNEL_NAME) clean
 
 
+stats:
+	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py python3 -m vanilla_parser --only stats_parser --vcache-stats vcache_stats.csv
