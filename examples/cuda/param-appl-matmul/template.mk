@@ -46,25 +46,34 @@ SPMD_SRC_PATH = $(BSG_MANYCORE_DIR)/software/spmd
 CUDALITE_SRC_PATH = $(SPMD_SRC_PATH)/bsg_cuda_lite_runtime
 
 # KERNEL_NAME is the name of the CUDA-Lite Kernel
-KERNEL_NAME = appl-matmul
+KERNEL_NAME = appl-nqueens
 
 ###############################################################################
 # Host code compilation flags and flow
 ###############################################################################
+# import parameters and APP_PATH
+include parameters.mk
+include app_path.mk
+
+# APPL implementation
+APPL_IMPL = APPL_IMPL_$(appl-impl)
 
 # Matrix Size
-MATRIX_N ?= 256
+MATRIX_N ?= $(matrix-n)
 
 # Tile Group Dimensions
-TILE_GROUP_DIM_X ?= 2
-TILE_GROUP_DIM_Y ?= 2
+TILE_GROUP_DIM_X ?= $(tgx)
+TILE_GROUP_DIM_Y ?= $(tgy)
+
+vpath %.c   $(APP_PATH)
+vpath %.cpp $(APP_PATH)
 
 # TEST_SOURCES is a list of source files that need to be compiled
 TEST_SOURCES = main.c
 
-DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
-CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y) -DMATRIX_N=$(MATRIX_N)
-CXXDEFINES += 
+DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE -DMATRIX_N=$(MATRIX_N)
+CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
+CXXDEFINES +=
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
 CFLAGS   += -std=c99 $(FLAGS)
@@ -88,17 +97,12 @@ include $(EXAMPLES_PATH)/link.mk
 
 # BSG_MANYCORE_KERNELS is a list of manycore executables that should
 # be built before executing.
-BSG_MANYCORE_KERNELS ?= $(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv
+RISCV_CCPPFLAGS += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X)
+RISCV_CCPPFLAGS += -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
+RISCV_TARGET_OBJECTS = kernel.rvo
+BSG_MANYCORE_KERNELS = main.riscv
 
-$(CUDALITE_SRC_PATH)/$(KERNEL_NAME)/main.riscv: $(BSG_MACHINE_PATH)/Makefile.machine.include
-	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
-	BASEJUMP_STL_DIR=$(BASEJUMP_STL_DIR) \
-	BSG_IP_CORES_DIR=$(BASEJUMP_STL_DIR) \
-	IGNORE_CADENV=1 \
-	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	bsg_tiles_X=$(TILE_GROUP_DIM_X) \
-	bsg_tiles_Y=$(TILE_GROUP_DIM_Y) \
-	$(MAKE) -j1 -C $(CUDALITE_SRC_PATH)/$(KERNEL_NAME) clean main.riscv
+include $(EXAMPLES_PATH)/cuda/appl-riscv.mk
 
 ###############################################################################
 # Execution flow
@@ -124,16 +128,5 @@ regression: exec.log
 
 .DEFAULT_GOAL := help
 
-.PHONY: clean
-
-clean:
-	BSG_MANYCORE_DIR=$(BSG_MANYCORE_DIR) \
-	BASEJUMP_STL_DIR=$(BASEJUMP_STL_DIR) \
-	BSG_IP_CORES_DIR=$(BASEJUMP_STL_DIR) \
-	IGNORE_CADENV=1 \
-	BSG_MACHINE_PATH=$(BSG_MACHINE_PATH) \
-	$(MAKE) -j1 -C $(CUDALITE_SRC_PATH)/$(KERNEL_NAME) clean
-
-
 stats:
-	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py python3 -m vanilla_parser --only stats_parser --vcache-stats vcache_stats.csv
+	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py python3 -m vanilla_parser --only stats_parser --vcache-stats vcache_stats.csv --tile
