@@ -188,19 +188,16 @@ int kernel_appl_matmul (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                hb_mc_dma_htod_t htod_A = {
+                hb_mc_dma_htod_t htod[2] = {{
                   .d_addr = A_device,
                   .h_addr = A,
                   .size   = N * N * sizeof(REAL)
-                };
-                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod_A, 1));
-
-                hb_mc_dma_htod_t htod_B = {
+                }, {
                   .d_addr = B_device,
                   .h_addr = B,
                   .size   = N * N * sizeof(REAL)
-                };
-                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod_B, 1));
+                }};
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, 2));
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
