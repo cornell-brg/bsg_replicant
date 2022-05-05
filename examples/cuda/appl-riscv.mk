@@ -4,6 +4,7 @@ _REPO_ROOT ?= $(shell git rev-parse --show-toplevel)
 
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/applrts/
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/appl/
+RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/ligra/
 BSG_ELF_STACK_PTR ?= 0x0003fffc
 
 vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/appl
@@ -12,6 +13,9 @@ vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/appl
 vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/applrts
 vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/applrts
 vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/applrts
+vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/ligra
+vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/ligra
+vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/ligra
 
 # APPL implemenation
 ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
