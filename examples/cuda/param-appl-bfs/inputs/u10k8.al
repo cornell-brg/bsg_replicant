@@ -1,6 +1,6 @@
 AdjacencyGraph
 1024
-8115
+16230
 0
 7
 26
