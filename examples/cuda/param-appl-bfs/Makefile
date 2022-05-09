@@ -4,10 +4,11 @@ REPLICANT_PATH = $(shell git rev-parse --show-toplevel)
 all: generate
 
 # call to generate a test name
-test-name = graph-input_$(1)__iter_$(2)__grain-size_$(3)__tgx_$(4)__tgy_$(5)__appl-impl_$(6)
+test-name = graph-input_$(1)__start_$(2)__iter_$(3)__grain-size_$(4)__tgx_$(5)__tgy_$(6)__appl-impl_$(7)
 
 # call to get parameter from test name
 get-graph-input = $(lastword $(subst _, ,$(filter graph-input_%,$(subst __, ,$(1)))))
+get-start = $(lastword $(subst _, ,$(filter start_%,$(subst __, ,$(1)))))
 get-iter = $(lastword $(subst _, ,$(filter iter_%,$(subst __, ,$(1)))))
 get-grain-size = $(lastword $(subst _, ,$(filter grain-size_%,$(subst __, ,$(1)))))
 get-tgx = $(lastword $(subst _, ,$(filter tgx_%,$(subst __, ,$(1)))))
@@ -26,6 +27,7 @@ $(addsuffix /parameters.mk,$(TESTS_DIRS)): %/parameters.mk:
 	@touch $@
 	@echo test-name  = $* >> $@
 	@echo graph-input = $(call get-graph-input,$*) >> $@
+	@echo start = $(call get-start,$*) >> $@
 	@echo iter = $(call get-iter,$*) >> $@
 	@echo grain-size = $(call get-grain-size,$*) >> $@
 	@echo tgx = $(call get-tgx,$*) >> $@
