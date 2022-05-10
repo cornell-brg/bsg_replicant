@@ -34,26 +34,38 @@ struct BFS_F {
   inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
 };
 
+// set by host
+#define _global __attribute__((section(".dram")))
+_global uintE *g_Parents;
+_global uintE *g_bfsLvls;
+_global bool  *g_Frontier;
+_global uint32_t  g_lvl = BFS_LVL;
+
 template <class vertex>
 void Compute( graph<vertex>& GA, int* results ) {
   size_t n     = GA.n;
   size_t start = 0;
-  uintE* Parents = newA( uintE, n );
-  uintE* bfsLvls = newA( uintE, n );
-  appl::parallel_for( size_t( 0 ), n, [&]( size_t i ) {
-      Parents[i] = UINT_E_MAX;
-      bfsLvls[i] = UINT_E_MAX;
-      } );
-  Parents[start] = start;
-  vertexSubset Frontier( n, start ); // creates initial frontier
+  //uintE* Parents = newA( uintE, n );
+  uintE* Parents = g_Parents;
+  //uintE* bfsLvls = newA( uintE, n );
+  uintE *bfsLvls = g_bfsLvls;
+  // appl::parallel_for( size_t( 0 ), n, [&]( size_t i ) {
+  //     Parents[i] = UINT_E_MAX;
+  //     bfsLvls[i] = UINT_E_MAX;
+  //     } );
 
-  uintE lvl = 0;
-  while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
-    vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
-    Frontier.del();
-    Frontier = output; // set new frontier
-    lvl++;
-  }
+  //Parents[0] = start;
+  //vertexSubset Frontier( n, start ); // creates initial frontier
+  vertexSubset Frontier(n, g_Frontier);
+
+  //uintE lvl = 0;
+  uintE lvl = g_lvl;
+  //while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
+  vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
+  Frontier.del();
+  Frontier = output; // set new frontier
+  //lvl++;
+  //}
 
   // print
   for (size_t i = 0; i < GA.n; i++) {
