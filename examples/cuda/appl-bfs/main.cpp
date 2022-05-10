@@ -145,9 +145,13 @@ int kernel_appl_bfs (int argc, char **argv) {
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
                 uint32_t host_result[G.n];
-                void *src = (void *) ((intptr_t) device_result);;
-                void *dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.n * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                hb_mc_dma_dtoh_t dtoh = {
+                  .d_addr = device_result,
+                  .h_addr = (&host_result[0]),
+                  .size   = G.n * sizeof(uint32_t)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh, 1));
+
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
