@@ -212,7 +212,6 @@ RISCV_ARCH_OP     := rv32imaf
 # CCPPFLAGS are common between GCC and G++
 RISCV_CCPPFLAGS += $(RISCV_OPT_LEVEL)
 RISCV_CCPPFLAGS += -march=$(RISCV_ARCH_OP)
-RISCV_CCPPFLAGS += -fno-rtti
 RISCV_CCPPFLAGS += -static
 RISCV_CCPPFLAGS += -ffast-math
 RISCV_CCPPFLAGS += -fno-common
