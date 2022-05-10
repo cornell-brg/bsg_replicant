@@ -100,6 +100,7 @@ include $(EXAMPLES_PATH)/link.mk
 RISCV_CCPPFLAGS += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X)
 RISCV_CCPPFLAGS += -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
 RISCV_CCPPFLAGS += -std=c++14
+RISCV_CCPPFLAGS += -DBFS_LVL=$(iter)
 RISCV_TARGET_OBJECTS = kernel.rvo
 BSG_MANYCORE_KERNELS = main.riscv
 

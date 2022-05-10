@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <bsg_manycore_regression.h>
 #include <iostream>
+#include <vector>
 
 // Ligra headers
 #include "ligra.h"
@@ -46,7 +47,16 @@ struct BFS_F {
   inline bool cond( uintE d ) { return ( Parents[d] == UINT_E_MAX ); }
 };
 
-
+static int symbol_to_eva(hb_mc_device_t *dev, const char *symbol, hb_mc_eva_t *eva)
+{
+    hb_mc_pod_t *pod = &dev->pods[dev->default_pod_id];
+    hb_mc_program_t *prog = pod->program;
+    BSG_CUDA_CALL(hb_mc_loader_symbol_to_eva(
+                      prog->bin
+                      ,prog->bin_size
+                      ,symbol
+                      ,eva));
+}
 int kernel_appl_bfs (int argc, char **argv) {
         int rc;
 
@@ -111,12 +121,50 @@ int kernel_appl_bfs (int argc, char **argv) {
                 vertexSubset Frontier( n, start ); // creates initial frontier
 
                 uintE lvl = 0;
-                while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
+                //while ( !Frontier.isEmpty() ) {    // loop until frontier is empty
+                while (lvl < iter) {
                   vertexSubset output = edgeMap( G, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
                   Frontier.del();
                   Frontier = output; // set new frontier
                   lvl++;
                 }
+
+                // calculate the solution
+                uintE *ParentsNext = newA(uintE, n);
+                uintE *bfsLvlsNext = newA(uintE, n);
+                memcpy(ParentsNext, Parents, n*sizeof(uintE));
+                memcpy(bfsLvlsNext, bfsLvls, n*sizeof(uintE));
+                vertexSubset FrontierNext = edgeMap(G, Frontier, BFS_F(ParentsNext, bfsLvlsNext, lvl));
+
+                // write the current frontier, parent array, lvls arrays, and lvl to device
+                // write the current frontier
+                hb_mc_eva_t d_Frontier, d_Parents, d_bfsLvls;
+                hb_mc_eva_t g_Frontier_ptr, g_Parents_ptr, g_bfsLvls_ptr;
+
+                // (1) find global symbols and allocate memory
+                // Parents
+                BSG_CUDA_CALL(symbol_to_eva(&device, "g_Parents", &g_Parents_ptr));
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, n*sizeof(uintE), &d_Parents));
+                // bfsLvls
+                BSG_CUDA_CALL(symbol_to_eva(&device, "g_bfsLvls", &g_bfsLvls_ptr));
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, n*sizeof(uintE), &d_bfsLvls));
+                // Frontier
+                BSG_CUDA_CALL(symbol_to_eva(&device, "g_Frontier", &g_Frontier_ptr));
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, n*sizeof(bool), &d_Frontier));
+
+                // write Frontier as dense
+                Frontier.toDense();
+
+                // DMA to device
+                hb_mc_dma_htod_t htod [] = {
+                    {.d_addr = d_Parents, .h_addr = Parents, .size = n*sizeof(uintE) }
+                    ,{.d_addr = d_bfsLvls, .h_addr = bfsLvls, .size = n*sizeof(uintE) }
+                    ,{.d_addr = d_Frontier, .h_addr = Frontier.d, .size = n*sizeof(bool) }
+                    ,{.d_addr = g_Frontier_ptr, .h_addr = &d_Frontier, .size = sizeof(d_Frontier) }
+                    ,{.d_addr = g_Parents_ptr, .h_addr = &d_Parents, .size = sizeof(d_Parents) }
+                    ,{.d_addr = g_bfsLvls_ptr, .h_addr = &d_bfsLvls, .size = sizeof(d_bfsLvls) }
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, sizeof(htod)/sizeof(htod[0])));
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -144,10 +192,13 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[G.n];
-                void *src = (void *) ((intptr_t) device_result);;
-                void *dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, G.n * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                std::vector<uint32_t> host_result(G.n);
+                hb_mc_dma_dtoh_t dtoh = {
+                    .d_addr = device_result
+                    ,.h_addr = &host_result[0]
+                    ,.size = G.n*sizeof(uint32_t)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh, 1));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
@@ -155,9 +206,9 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
-                  if (host_result[i] != bfsLvls[i]) {
+                  if (host_result[i] != bfsLvlsNext[i]) {
                      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
-                                i, host_result[i], i, bfsLvls[i]);
+                                i, host_result[i], i, bfsLvlsNext[i]);
                     return HB_MC_FAIL;
                   }
                 }
