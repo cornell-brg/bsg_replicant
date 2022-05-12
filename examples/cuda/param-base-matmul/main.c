@@ -188,7 +188,7 @@ int kernel_appl_matmul (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                hb_mc_dma_htod_t htod[2] = {{
+                hb_mc_dma_htod_t htod[] = {{
                   .d_addr = A_device,
                   .h_addr = A,
                   .size   = N * N * sizeof(REAL)
@@ -210,7 +210,7 @@ int kernel_appl_matmul (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[6] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
+                int cuda_argv[] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
