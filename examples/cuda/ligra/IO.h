@@ -259,7 +259,7 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
       host_v[i].setOutNeighbors( (uintE*)(intptr_t)(hb_edges + o * sizeof(uintE)) );
     }
     // copy edges and v
-    hb_mc_dma_htod_t htod[2] = {{
+    hb_mc_dma_htod_t htod[] = {{
       .d_addr = hb_edges,
       .h_addr = (&edges[0]),
       .size   = m * sizeof(uintE)
