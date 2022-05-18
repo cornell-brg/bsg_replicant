@@ -22,6 +22,7 @@ ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_CXXFLAGS  +=-DAPPL_IMPL_APPLRTS
 	RISCV_CXXFLAGS  +=-fno-rtti
 	RISCV_TARGET_OBJECTS += appl-runtime.rvo
+	RISCV_TARGET_OBJECTS += appl-malloc.rvo
 	RISCV_TARGET_OBJECTS += applrts-config.rvo
 	RISCV_TARGET_OBJECTS += applrts-runtime.rvo
 	RISCV_TARGET_OBJECTS += applrts-scheduler.rvo
@@ -29,6 +30,7 @@ endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_SERIAL)
 	RISCV_CXXFLAGS += -DAPPL_IMPL_SERIAL
+	RISCV_TARGET_OBJECTS += appl-malloc.rvo
 endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_CELLO)
