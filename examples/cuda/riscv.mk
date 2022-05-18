@@ -63,6 +63,12 @@
 # maintaining that repository is difficult when there's a lot of code
 # churn, so we brought riscv.mk here and deprecated baseline. 
 
+bsg-min-fn= $(shell echo "define min(a,b) { if (a>b) { return (a) } else { return (b) }} min ($(1),$(2))" | env bc)
+bsg-max-fn= $(shell echo "define max(a,b) { if (a>b) { return (a) } else { return (b) }} max ($(1),$(2))" | env bc)
+bsg-minus-fn = $(shell env expr $(1) - $(2))
+bsg-plus-fn = $(shell env expr $(1) + $(2))
+bsg-times-fn = $(shell env expr $(1) \* $(2))
+
 ORANGE=\033[0;33m
 RED=\033[0;31m
 NC=\033[0m
@@ -73,6 +79,7 @@ NC=\033[0m
 _REPO_ROOT ?= $(shell git rev-parse --show-toplevel)
 -include $(_REPO_ROOT)/environment.mk
 -include $(BSG_MACHINE_PATH)/Makefile.machine.include
+-include $(BSG_MANYCORE_DIR)/software/mk/Makefile.dimensions
 
 BSG_MANYCORE_SPMD_PATH = $(BSG_MANYCORE_DIR)/software/spmd/
 BSG_MANYCORE_CUDALITE_PATH = $(BSG_MANYCORE_SPMD_PATH)/bsg_cuda_lite_runtime/
@@ -226,39 +233,55 @@ RISCV_INCLUDES += -I$(BSG_MANYCORE_DIR)/software/bsg_manycore_lib
 # Check for machine definitions. These are typically set by
 # Makefile.machine.include
 
-ifndef BSG_MACHINE_GLOBAL_X
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_GLOBAL_X undefined"))
-endif
-ifndef BSG_MACHINE_GLOBAL_Y
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_GLOBAL_Y undefined"))
-endif
-RISCV_DEFINES += -Dbsg_global_X=$(BSG_MACHINE_GLOBAL_X)
-RISCV_DEFINES += -Dbsg_global_Y=$(BSG_MACHINE_GLOBAL_Y)
+# ifndef BSG_MACHINE_GLOBAL_X
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_GLOBAL_X undefined"))
+# endif
+# ifndef BSG_MACHINE_GLOBAL_Y
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_GLOBAL_Y undefined"))
+# endif
+# RISCV_DEFINES += -Dbsg_global_X=$(BSG_MACHINE_GLOBAL_X)
+# RISCV_DEFINES += -Dbsg_global_Y=$(BSG_MACHINE_GLOBAL_Y)
 
-ifndef BSG_MACHINE_POD_TILES
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_POD_TILES undefined"))
-endif
-ifndef BSG_MACHINE_PODS_X
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_PODS_X undefined"))
-endif
-ifndef BSG_MACHINE_PODS_Y
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_PODS_Y undefined"))
-endif
-RISCV_DEFINES += -Dbsg_group_size=$(BSG_MACHINE_POD_TILES)
-RISCV_DEFINES += -Dbsg_pods_X=$(BSG_MACHINE_PODS_X)
-RISCV_DEFINES += -Dbsg_pods_Y=$(BSG_MACHINE_PODS_Y)
+# ifndef BSG_MACHINE_POD_TILES
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_POD_TILES undefined"))
+# endif
+# ifndef BSG_MACHINE_PODS_X
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_PODS_X undefined"))
+# endif
+# ifndef BSG_MACHINE_PODS_Y
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_PODS_Y undefined"))
+# endif
+# RISCV_DEFINES += -Dbsg_group_size=$(BSG_MACHINE_POD_TILES)
+# RISCV_DEFINES += -Dbsg_pods_X=$(BSG_MACHINE_PODS_X)
+# RISCV_DEFINES += -Dbsg_pods_Y=$(BSG_MACHINE_PODS_Y)
 
-ifndef BSG_MACHINE_HOST_X_CORD
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_HOST_X_CORD undefined"))
-endif
-ifndef BSG_MACHINE_HOST_Y_CORD
-$(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_HOST_Y_CORD undefined"))
-endif
-RISCV_DEFINES += -DIO_X_INDEX=$(BSG_MACHINE_HOST_X_CORD)
-RISCV_DEFINES += -DIO_Y_INDEX=$(BSG_MACHINE_HOST_Y_CORD)
+# ifndef BSG_MACHINE_HOST_X_CORD
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_HOST_X_CORD undefined"))
+# endif
+# ifndef BSG_MACHINE_HOST_Y_CORD
+# $(error $(shell echo -e "$(RED)BSG MAKE ERROR: BSG_MACHINE_HOST_Y_CORD undefined"))
+# endif
+# RISCV_DEFINES += -DIO_X_INDEX=$(BSG_MACHINE_HOST_X_CORD)
+# RISCV_DEFINES += -DIO_Y_INDEX=$(BSG_MACHINE_HOST_Y_CORD)
+# RISCV_DEFINES += -DPREALLOCATE=0
+# RISCV_DEFINES += -DHOST_DEBUG=0
+
+RISCV_DEFINES +=-Dbsg_tiles_X=$(bsg_tiles_X) -Dbsg_tiles_Y=$(bsg_tiles_Y)
+RISCV_DEFINES +=-Dbsg_global_X=$(bsg_global_X) -Dbsg_global_Y=$(bsg_global_Y)
+RISCV_DEFINES +=-Dbsg_group_size=$(bsg_group_size)
+RISCV_DEFINES +=-Dbsg_pods_X=$(bsg_pods_X) -Dbsg_pods_Y=$(bsg_pods_Y)
+RISCV_DEFINES +=-Dnum_pods_X=$(BSG_MACHINE_PODS_X) -Dnum_pods_Y=$(BSG_MACHINE_PODS_Y)
+RISCV_DEFINES +=-DVCACHE_BLOCK_SIZE_WORDS=${BSG_MACHINE_VCACHE_BLOCK_SIZE_WORDS}
+RISCV_DEFINES +=-DVCACHE_CAPACITY_WORDS=$(shell expr $(BSG_MACHINE_GLOBAL_X) \* $(BSG_MACHINE_VCACHE_SET) \* $(BSG_MACHINE_VCACHE_WAY) \* $(BSG_MACHINE_VCACHE_BLOCK_SIZE_WORDS) \* 2 \* $(BSG_MACHINE_NUM_VCACHE_ROWS))
+RISCV_DEFINES +=-DBARRIER_RUCHE_FACTOR_X=$(BSG_MACHINE_BARRIER_RUCHE_FACTOR_X)
+
+# IO_X/Y_INDEX indicates global physical coordinate where the host interface is attached.
+# This macros are required by the program to know where to send the finish/fail packets to the host.
+RISCV_DEFINES +=-DIO_X_INDEX=$(BSG_MACHINE_HOST_X_CORD)
+RISCV_DEFINES +=-DIO_Y_INDEX=$(BSG_MACHINE_HOST_Y_CORD)
+
 RISCV_DEFINES += -DPREALLOCATE=0
 RISCV_DEFINES += -DHOST_DEBUG=0
-
 crt.rvo: $(BSG_MANYCORE_COMMON_PATH)/crt.S
 	$(_RISCV_GCC) $(RISCV_CFLAGS) $(RISCV_DEFINES) $(RISCV_INCLUDES) -c $< -o $@ |& tee $*.rvo.log
 

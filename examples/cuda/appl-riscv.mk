@@ -18,6 +18,8 @@ vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/ligra
 vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/ligra
 
 # APPL implemenation
+RISCV_TARGET_OBJECTS += appl-hw-barrier.rvo
+
 ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_CXXFLAGS  +=-DAPPL_IMPL_APPLRTS
 	RISCV_CXXFLAGS  +=-fno-rtti
