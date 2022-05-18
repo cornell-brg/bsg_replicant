@@ -2,6 +2,10 @@
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
+#include "bsg_tile_group_barrier.hpp"
+
+bsg_barrier<bsg_tiles_X, bsg_tiles_Y> barrier;
+
 #define REAL float
 int grain_size;
 
@@ -184,7 +188,7 @@ int kernel_appl_matmul(REAL* A, REAL* B, REAL* C, int n, int _grain_size, int* d
   appl::runtime_init(dram_buffer, grain_size);
 
   // sync
-  appl::sync();
+  barrier.sync();
 
   bsg_cuda_print_stat_kernel_start();
   if (__bsg_id == 0) {
@@ -203,6 +207,6 @@ int kernel_appl_matmul(REAL* A, REAL* B, REAL* C, int n, int _grain_size, int* d
   bsg_cuda_print_stat_kernel_end();
   // --------------------- end of kernel -----------------
 
-  appl::sync();
+  barrier.sync();
   return 0;
 }

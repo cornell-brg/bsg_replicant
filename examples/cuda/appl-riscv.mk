@@ -5,7 +5,6 @@ _REPO_ROOT ?= $(shell git rev-parse --show-toplevel)
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/applrts/
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/appl/
 RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/ligra/
-RISCV_CXXFLAGS += -I$(BSG_MANYCORE_DIR)/software/spmd/applstatic/
 BSG_ELF_STACK_PTR ?= 0x0003fffc
 
 vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/appl
@@ -17,13 +16,8 @@ vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/applrts
 vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/ligra
 vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/ligra
 vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/ligra
-vpath %.cpp $(BSG_MANYCORE_DIR)/software/spmd/applstatic
-vpath %.c   $(BSG_MANYCORE_DIR)/software/spmd/applstatic
-vpath %.S   $(BSG_MANYCORE_DIR)/software/spmd/applstatic
 
 # APPL implemenation
-RISCV_TARGET_OBJECTS += appl-hw-barrier.rvo
-
 ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_CXXFLAGS  +=-DAPPL_IMPL_APPLRTS
 	RISCV_CXXFLAGS  +=-fno-rtti
@@ -37,15 +31,6 @@ endif
 ifeq ($(APPL_IMPL), APPL_IMPL_SERIAL)
 	RISCV_CXXFLAGS += -DAPPL_IMPL_SERIAL
 	RISCV_TARGET_OBJECTS += appl-malloc.rvo
-endif
-
-ifeq ($(APPL_IMPL), APPL_IMPL_STATIC)
-	RISCV_CXXFLAGS += -DAPPL_IMPL_STATIC
-	RISCV_CXXFLAGS  +=-fno-rtti
-	RISCV_TARGET_OBJECTS += appl-runtime.rvo
-	RISCV_TARGET_OBJECTS += appl-malloc.rvo
-	RISCV_TARGET_OBJECTS += applstatic-config.rvo
-	RISCV_TARGET_OBJECTS += applstatic-runtime.rvo
 endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_CELLO)
