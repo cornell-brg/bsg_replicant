@@ -259,16 +259,16 @@ graph<vertex> readGraphFromFile( const char* fname, bool isSymmetric,
       host_v[i].setOutNeighbors( (uintE*)(intptr_t)(hb_edges + o * sizeof(uintE)) );
     }
     // copy edges and v
-    (hb_mc_device_memcpy (&device,
-                                      ((void *) ((intptr_t) hb_edges)),
-                                      (&edges[0]),
-                                      m * sizeof(uintE),
-                                      HB_MC_MEMCPY_TO_DEVICE));
-    (hb_mc_device_memcpy (&device,
-                                      ((void *) ((intptr_t) hb_v)),
-                                      (&host_v[0]),
-                                      n * sizeof(vertex),
-                                      HB_MC_MEMCPY_TO_DEVICE));
+    hb_mc_dma_htod_t htod[] = {{
+      .d_addr = hb_edges,
+      .h_addr = (&edges[0]),
+      .size   = m * sizeof(uintE)
+    }, {
+      .d_addr = hb_v,
+      .h_addr = (&host_v[0]),
+      .size   = n * sizeof(vertex)
+    }};
+    (hb_mc_device_dma_to_device(&device, htod, 2));
   }
 
   if ( !isSymmetric ) {
