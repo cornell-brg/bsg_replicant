@@ -30,12 +30,10 @@ PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/platforms/dpi-verilator/bsg_manycore_pl
 
 PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/platforms/bigblade-vcs/bsg_manycore_simulator.cpp
 
-PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/features/tracer/simulation/bsg_manycore_tracer.cpp
 
 PLATFORM_REGRESSION_CSOURCES += $(LIBRARIES_PATH)/platforms/bigblade-vcs/bsg_manycore_regression_platform.c
 
 include $(LIBRARIES_PATH)/features/dma/simulation/feature.mk
-include $(LIBRARIES_PATH)/features/tracer/simulation/feature.mk
 include $(LIBRARIES_PATH)/features/pc_histogram/simulation/feature.mk
 
 PLATFORM_OBJECTS += $(patsubst %cpp,%o,$(PLATFORM_CXXSOURCES))
