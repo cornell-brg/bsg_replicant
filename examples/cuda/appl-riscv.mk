@@ -30,6 +30,7 @@ ifeq ($(APPL_IMPL), APPL_IMPL_APPLRTS)
 	RISCV_TARGET_OBJECTS += applrts-config.rvo
 	RISCV_TARGET_OBJECTS += applrts-runtime.rvo
 	RISCV_TARGET_OBJECTS += applrts-scheduler.rvo
+	RISCV_TARGET_OBJECTS += applrts-stats.rvo
 endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_SERIAL)
