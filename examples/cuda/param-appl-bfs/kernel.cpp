@@ -3,10 +3,6 @@
 #include "appl.hpp"
 #include "ligra.h"
 
-#include "bsg_tile_group_barrier.hpp"
-
-bsg_barrier<bsg_tiles_X, bsg_tiles_Y> barrier;
-
 struct BFS_F {
   uintE* Parents;
   uintE* bfsLvls;
@@ -44,7 +40,7 @@ _global uint32_t  g_lvl = BFS_LVL;
 template <class vertex>
 void Compute( graph<vertex>& GA, int* results ) {
   size_t n     = GA.n;
-  size_t start = 0;
+  // size_t start = 0;
   //uintE* Parents = newA( uintE, n );
   uintE* Parents = g_Parents;
   //uintE* bfsLvls = newA( uintE, n );
@@ -67,11 +63,6 @@ void Compute( graph<vertex>& GA, int* results ) {
   //lvl++;
   //}
 
-  // print
-  for (size_t i = 0; i < GA.n; i++) {
-    results[i] = bfsLvls[i];
-    bsg_print_int(bfsLvls[i]);
-  }
   Frontier.del();
 }
 
@@ -79,7 +70,8 @@ extern "C" __attribute__ ((noinline))
 int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, int* dram_buffer) {
 
   appl::runtime_init(dram_buffer, 16);
-  barrier.sync();
+  appl::sync();
+  bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
     graph<symmetricVertex> G = graph<symmetricVertex>(V, n, m, nullptr);
@@ -89,7 +81,15 @@ int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, int* dram_bu
   }
 
   appl::runtime_end();
+  bsg_cuda_print_stat_kernel_end();
+  // print
+  if (__bsg_id == 0) {
+    for (size_t i = 0; i < n; i++) {
+      results[i] = g_bfsLvls[i];
+      bsg_print_int(g_bfsLvls[i]);
+    }
+  }
+  appl::sync();
 
-  barrier.sync();
   return 0;
 }
