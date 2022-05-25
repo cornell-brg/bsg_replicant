@@ -30,6 +30,7 @@ PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/platforms/dpi-verilator/bsg_manycore_pl
 
 PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/platforms/bigblade-vcs/bsg_manycore_simulator.cpp
 
+PLATFORM_CXXSOURCES += $(LIBRARIES_PATH)/features/tracer/simulation/bsg_manycore_tracer.cpp
 
 PLATFORM_REGRESSION_CSOURCES += $(LIBRARIES_PATH)/platforms/bigblade-vcs/bsg_manycore_regression_platform.c
 
