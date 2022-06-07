@@ -47,6 +47,9 @@ generate: $(TESTS_DIRS)
 $(addsuffix .profile,$(TESTS)): %.profile: %
 	$(MAKE) -C $< profile.log
 
+$(addsuffix .pc-histogram,$(TESTS)): %.pc-histogram: %
+	$(MAKE) -C $< pc-histogram.log
+
 $(addsuffix .exec,$(TESTS)): %.exec: %
 	$(MAKE) -C $< exec.log
 
@@ -55,6 +58,7 @@ $(addsuffix .stats,$(TESTS)): %.stats: %
 
 .PHONY: profile exec
 profile: $(addsuffix .profile,$(TESTS))
+pc-histogram: $(addsuffix .pc-histogram,$(TESTS))
 exec:    $(addsuffix .exec,$(TESTS))
 stats:	 $(addsuffix .stats,$(TESTS))
 purge:
