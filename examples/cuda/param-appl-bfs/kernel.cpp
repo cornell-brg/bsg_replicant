@@ -35,26 +35,29 @@ struct BFS_F {
 _global uintE *g_Parents;
 _global uintE *g_bfsLvls;
 _global bool  *g_Frontier;
+_global uintE *g_sparseFrontier;
 _global uint32_t  g_lvl = BFS_LVL;
 
 template <class vertex>
-void Compute( graph<vertex>& GA, uint32_t nonZeroes ) {
+void Compute( graph<vertex>& GA, uint32_t nonZeroes, uint32_t isDense ) {
   size_t n     = GA.n;
   uintE* Parents = g_Parents;
   uintE *bfsLvls = g_bfsLvls;
-
-  vertexSubset Frontier(n, nonZeroes, g_Frontier);
-
   uintE lvl = g_lvl;
-  vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
-  Frontier.del();
-  Frontier = output; // set new frontier
 
-  Frontier.del();
+  if (isDense) {
+    bsg_print_int(10010);
+    vertexSubset Frontier(n, nonZeroes, g_Frontier);
+    vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
+  } else {
+    bsg_print_int(10086);
+    vertexSubset Frontier(n, nonZeroes, g_sparseFrontier);
+    vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
+  }
 }
 
 extern "C" __attribute__ ((noinline))
-int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, uint32_t nonZeroes, int* dram_buffer) {
+int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, uint32_t nonZeroes, uint32_t isDense, int* dram_buffer) {
 
   appl::runtime_init(dram_buffer);
   appl::sync();
@@ -62,7 +65,7 @@ int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, uint32_t non
 
   if (__bsg_id == 0) {
     graph<symmetricVertex> G = graph<symmetricVertex>(V, n, m, nullptr);
-    Compute(G, nonZeroes);
+    Compute(G, nonZeroes, isDense);
   } else {
     appl::worker_thread_init();
   }
