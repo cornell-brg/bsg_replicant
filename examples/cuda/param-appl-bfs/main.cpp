@@ -146,6 +146,8 @@ int kernel_appl_bfs (int argc, char **argv) {
                 // record #nonzero
                 uint32_t nonZeroes = Frontier.numNonzeros();
 
+                bsg_pr_info("numNonZero in this iteration: %u\n\n", nonZeroes);
+
                 // (1) find global symbols and allocate memory
                 // Parents
                 BSG_CUDA_CALL(symbol_to_eva(&device, "g_Parents", &g_Parents_ptr));
