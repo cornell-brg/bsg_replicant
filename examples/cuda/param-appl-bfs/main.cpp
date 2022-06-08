@@ -19,7 +19,7 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 2049
+#define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 struct BFS_F {
@@ -108,7 +108,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  * Run BFS natively
                  ******************************************************************************************************************/
 
-                int32_t start = 0;
+                int32_t start = START_VERTEX;
                 int32_t n     = G.n;
                 uintE* Parents = newA( uintE, n );
                 uintE* bfsLvls = newA( uintE, n );
@@ -116,6 +116,8 @@ int kernel_appl_bfs (int argc, char **argv) {
                   Parents[i] = UINT_E_MAX;
                   bfsLvls[i] = UINT_E_MAX;
                 }
+
+                bsg_pr_info("Starting Ligra BFS with start index %d.\n\n", start);
 
                 Parents[start] = start;
                 vertexSubset Frontier( n, start ); // creates initial frontier
@@ -194,7 +196,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
                 std::vector<uint32_t> host_result(G.n);
                 hb_mc_dma_dtoh_t dtoh = {
-                    .d_addr = device_result
+                    .d_addr = d_bfsLvls
                     ,.h_addr = &host_result[0]
                     ,.size = G.n*sizeof(uint32_t)
                 };
@@ -206,6 +208,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
+                  printf("result[%d] = %d\n", i, host_result[i]);
                   if (host_result[i] != bfsLvlsNext[i]) {
                      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
                                 i, host_result[i], i, bfsLvlsNext[i]);
