@@ -49,11 +49,15 @@ endif
 
 ifeq ($(APPL_IMPL), APPL_IMPL_CELLO)
 	CELLO_DIR := $(CL_DIR)/../cello
-	RISCV_CXXFLAGS +=-DAPPL_IMPL_CELLO
-	RISCV_CXXFLAGS +=-I$(CELLO_DIR)/include
-	RISCV_CXXFLAGS +=-I$(CELLO_DIR)/arch/hammerblade/include
-	RISCV_CXXFLAGS += -fno-threadsafe-statics
+	RISCV_CCPPFLAGS +=-DAPPL_IMPL_CELLO
+	RISCV_CCPPFLAGS += -I$(CELLO_DIR)/include
+	RISCV_CCCPPFLAGS += -fno-threadsafe-statics
+	vpath %.cpp $(CELLO_DIR)/src
+	vpath %.c   $(CELLO_DIR)/src
 	RISCV_TARGET_OBJECTS += appl-runtime.rvo
+	RISCV_TARGET_OBJECTS += cello_invoke.rvo
+	RISCV_TARGET_OBJECTS += cello_malloc.rvo
+	RISCV_TARGET_OBJECTS += cello_scheduler.rvo
 endif
 
 # include riscv builddefs
