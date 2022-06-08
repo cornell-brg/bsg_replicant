@@ -157,6 +157,9 @@ int kernel_appl_bfs (int argc, char **argv) {
                 // write Frontier as dense
                 Frontier.toDense();
 
+                // record #nonzero
+                uint32_t nonZeroes = Frontier.numNonzeros();
+
                 // DMA to device
                 hb_mc_dma_htod_t htod [] = {
                     {.d_addr = d_Parents, .h_addr = Parents, .size = n*sizeof(uintE) }
@@ -179,12 +182,12 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
+                const uint32_t cuda_argv[6] = {device_result, G.hb_V, G.n, G.m, nonZeroes, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 6, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.

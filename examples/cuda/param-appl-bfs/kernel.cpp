@@ -38,12 +38,12 @@ _global bool  *g_Frontier;
 _global uint32_t  g_lvl = BFS_LVL;
 
 template <class vertex>
-void Compute( graph<vertex>& GA ) {
+void Compute( graph<vertex>& GA, uint32_t nonZeroes ) {
   size_t n     = GA.n;
   uintE* Parents = g_Parents;
   uintE *bfsLvls = g_bfsLvls;
 
-  vertexSubset Frontier(n, g_Frontier);
+  vertexSubset Frontier(n, nonZeroes, g_Frontier);
 
   uintE lvl = g_lvl;
   vertexSubset output = edgeMap( GA, Frontier, BFS_F( Parents, bfsLvls, lvl ) );
@@ -54,7 +54,7 @@ void Compute( graph<vertex>& GA ) {
 }
 
 extern "C" __attribute__ ((noinline))
-int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, int* dram_buffer) {
+int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, uint32_t nonZeroes, int* dram_buffer) {
 
   appl::runtime_init(dram_buffer);
   appl::sync();
@@ -62,7 +62,7 @@ int kernel_appl_bfs(int* results, symmetricVertex* V, int n, int m, int* dram_bu
 
   if (__bsg_id == 0) {
     graph<symmetricVertex> G = graph<symmetricVertex>(V, n, m, nullptr);
-    Compute(G);
+    Compute(G, nonZeroes);
   } else {
     appl::worker_thread_init();
   }
