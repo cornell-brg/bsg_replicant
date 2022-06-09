@@ -19,7 +19,7 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 2049
+#define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 struct BFS_F {
@@ -108,7 +108,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  * Run BFS natively
                  ******************************************************************************************************************/
 
-                int32_t start = 0;
+                int32_t start = START_VERTEX;
                 int32_t n     = G.n;
                 uintE* Parents = newA( uintE, n );
                 uintE* bfsLvls = newA( uintE, n );
@@ -116,6 +116,8 @@ int kernel_appl_bfs (int argc, char **argv) {
                   Parents[i] = UINT_E_MAX;
                   bfsLvls[i] = UINT_E_MAX;
                 }
+
+                bsg_pr_info("Starting Ligra BFS with start index %d.\n\n", start);
 
                 Parents[start] = start;
                 vertexSubset Frontier( n, start ); // creates initial frontier
@@ -138,8 +140,13 @@ int kernel_appl_bfs (int argc, char **argv) {
 
                 // write the current frontier, parent array, lvls arrays, and lvl to device
                 // write the current frontier
-                hb_mc_eva_t d_Frontier, d_Parents, d_bfsLvls;
-                hb_mc_eva_t g_Frontier_ptr, g_Parents_ptr, g_bfsLvls_ptr;
+                hb_mc_eva_t d_Frontier, d_Parents, d_bfsLvls, d_sparseFrontier;
+                hb_mc_eva_t g_Frontier_ptr, g_Parents_ptr, g_bfsLvls_ptr, g_sparseFrontier_ptr;
+
+                // record #nonzero
+                uint32_t nonZeroes = Frontier.numNonzeros();
+
+                bsg_pr_info("numNonZero in this iteration: %u\n\n", nonZeroes);
 
                 // (1) find global symbols and allocate memory
                 // Parents
@@ -151,20 +158,35 @@ int kernel_appl_bfs (int argc, char **argv) {
                 // Frontier
                 BSG_CUDA_CALL(symbol_to_eva(&device, "g_Frontier", &g_Frontier_ptr));
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, n*sizeof(bool), &d_Frontier));
+                // Frontier
+                BSG_CUDA_CALL(symbol_to_eva(&device, "g_sparseFrontier", &g_sparseFrontier_ptr));
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, nonZeroes*sizeof(uintE), &d_sparseFrontier));
 
-                // write Frontier as dense
-                Frontier.toDense();
+                // record density
+                uint32_t isDense = (uint32_t)Frontier.dense();
 
                 // DMA to device
-                hb_mc_dma_htod_t htod [] = {
-                    {.d_addr = d_Parents, .h_addr = Parents, .size = n*sizeof(uintE) }
-                    ,{.d_addr = d_bfsLvls, .h_addr = bfsLvls, .size = n*sizeof(uintE) }
-                    ,{.d_addr = d_Frontier, .h_addr = Frontier.d, .size = n*sizeof(bool) }
-                    ,{.d_addr = g_Frontier_ptr, .h_addr = &d_Frontier, .size = sizeof(d_Frontier) }
-                    ,{.d_addr = g_Parents_ptr, .h_addr = &d_Parents, .size = sizeof(d_Parents) }
-                    ,{.d_addr = g_bfsLvls_ptr, .h_addr = &d_bfsLvls, .size = sizeof(d_bfsLvls) }
-                };
-                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, sizeof(htod)/sizeof(htod[0])));
+                if (isDense) {
+                  hb_mc_dma_htod_t htod [] = {
+                      {.d_addr = d_Parents, .h_addr = Parents, .size = n*sizeof(uintE) }
+                      ,{.d_addr = d_bfsLvls, .h_addr = bfsLvls, .size = n*sizeof(uintE) }
+                      ,{.d_addr = d_Frontier, .h_addr = Frontier.d, .size = n*sizeof(bool) }
+                      ,{.d_addr = g_Frontier_ptr, .h_addr = &d_Frontier, .size = sizeof(d_Frontier) }
+                      ,{.d_addr = g_Parents_ptr, .h_addr = &d_Parents, .size = sizeof(d_Parents) }
+                      ,{.d_addr = g_bfsLvls_ptr, .h_addr = &d_bfsLvls, .size = sizeof(d_bfsLvls) }
+                  };
+                  BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, sizeof(htod)/sizeof(htod[0])));
+                } else {
+                  hb_mc_dma_htod_t htod [] = {
+                      {.d_addr = d_Parents, .h_addr = Parents, .size = n*sizeof(uintE) }
+                      ,{.d_addr = d_bfsLvls, .h_addr = bfsLvls, .size = n*sizeof(uintE) }
+                      ,{.d_addr = d_sparseFrontier, .h_addr = Frontier.s, .size = nonZeroes*sizeof(uintE) }
+                      ,{.d_addr = g_sparseFrontier_ptr, .h_addr = &d_sparseFrontier, .size = sizeof(d_sparseFrontier) }
+                      ,{.d_addr = g_Parents_ptr, .h_addr = &d_Parents, .size = sizeof(d_Parents) }
+                      ,{.d_addr = g_bfsLvls_ptr, .h_addr = &d_bfsLvls, .size = sizeof(d_bfsLvls) }
+                  };
+                  BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, sizeof(htod)/sizeof(htod[0])));
+                }
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -177,12 +199,12 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
+                const uint32_t cuda_argv[7] = {device_result, G.hb_V, G.n, G.m, nonZeroes, isDense, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 7, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -194,7 +216,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
                 std::vector<uint32_t> host_result(G.n);
                 hb_mc_dma_dtoh_t dtoh = {
-                    .d_addr = device_result
+                    .d_addr = d_bfsLvls
                     ,.h_addr = &host_result[0]
                     ,.size = G.n*sizeof(uint32_t)
                 };
@@ -206,6 +228,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
+                  printf("result[%d] = %d\n", i, host_result[i]);
                   if (host_result[i] != bfsLvlsNext[i]) {
                      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
                                 i, host_result[i], i, bfsLvlsNext[i]);

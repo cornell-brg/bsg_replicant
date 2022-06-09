@@ -18,7 +18,7 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 2049
+#define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 struct BFS_F {
@@ -98,7 +98,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                  * Run BFS natively
                  ******************************************************************************************************************/
 
-                int32_t start = 0;
+                int32_t start = 1;
                 int32_t n     = G.n;
                 uintE* Parents = newA( uintE, n );
                 uintE* bfsLvls = newA( uintE, n );
@@ -106,6 +106,8 @@ int kernel_appl_bfs (int argc, char **argv) {
                   Parents[i] = UINT_E_MAX;
                   bfsLvls[i] = UINT_E_MAX;
                 }
+
+                bsg_pr_info("Starting Ligra BFS with start index %d.\n\n", start);
 
                 Parents[start] = start;
                 vertexSubset Frontier( n, start ); // creates initial frontier
@@ -116,6 +118,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                   Frontier.del();
                   Frontier = output; // set new frontier
                   lvl++;
+                  printf("next lvl: %d, nonzeros: %d\n", lvl, Frontier.numNonzeros());
                 }
 
                 /*****************************************************************************************************************
@@ -129,12 +132,12 @@ int kernel_appl_bfs (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                const uint32_t cuda_argv[5] = {device_result, G.hb_V, G.n, G.m, dram_buffer};
+                const uint32_t cuda_argv[6] = {device_result, G.hb_V, G.n, G.m, start, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 5, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_bfs", 6, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -159,6 +162,7 @@ int kernel_appl_bfs (int argc, char **argv) {
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
                 for (int i = 0; i < G.n; i++) {
+                  printf("result[%d] = %d\n", i, host_result[i]);
                   if (host_result[i] != bfsLvls[i]) {
                      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
                                 i, host_result[i], i, bfsLvls[i]);
