@@ -165,6 +165,21 @@ int kernel_appl_bfs (int argc, char **argv) {
                 // record density
                 uint32_t isDense = (uint32_t)Frontier.dense();
 
+                // debug
+                if (isDense) {
+                  bsg_pr_info(" this frontier is dense \n\n");
+                }
+                symmetricVertex* v_5786 = &(G.V[5786]);
+                uintE d = v_5786->getInDegree();
+                for ( size_t j = 0; j < d; j++ ) {
+                  bsg_pr_info(" 5786 is neighbor with %u which is set to %u \n\n", v_5786->getInNeighbor( j ), Frontier.d[ v_5786->getInNeighbor( j )]);
+                }
+                bsg_pr_info(" 5786 in parent is %u\n\n", Parents[5786]);
+                bsg_pr_info(" after iter 5786 in parent is %u\n\n", ParentsNext[5786]);
+                bsg_pr_info(" 5786 in bfsLvls is %u\n\n", bfsLvls[5786]);
+                bsg_pr_info(" after iter 5786 in bfsLvls is %u\n\n", bfsLvlsNext[5786]);
+                bsg_pr_info(" d_bfsLvls addr is 0x%x\n\n", d_bfsLvls);
+
                 // DMA to device
                 if (isDense) {
                   hb_mc_dma_htod_t htod [] = {
@@ -227,13 +242,17 @@ int kernel_appl_bfs (int argc, char **argv) {
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
+                bool failed = false;
                 for (int i = 0; i < G.n; i++) {
                   printf("result[%d] = %d\n", i, host_result[i]);
                   if (host_result[i] != bfsLvlsNext[i]) {
                      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
                                 i, host_result[i], i, bfsLvlsNext[i]);
-                    return HB_MC_FAIL;
+                     failed = true;
                   }
+                }
+                if (failed) {
+                  return HB_MC_FAIL;
                 }
 
         }
