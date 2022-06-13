@@ -153,6 +153,10 @@ int kernel_appl_pagerank (int argc, char **argv) {
                       p_curr[i] = fabs( p_curr[i] - p_next[i] );
                     } );
                   }
+                  bsg_pr_info("iter %d\n\n", iter);
+                  for (size_t i = 0; i < n; i++) {
+                    bsg_pr_info("PageRank at vertex %d = %f\n", i, p_next[i]);
+                  }
                   float L1_norm = sequence::plusReduce( p_curr, n );
                   if ( L1_norm < epsilon )
                     break;
@@ -166,8 +170,8 @@ int kernel_appl_pagerank (int argc, char **argv) {
                 for (size_t i = 0; i < n; i++) {
                   bsg_pr_info("PageRank at vertex %d = %f\n", i, p_curr[i]);
                 }
-                exit(1);
 
+                bsg_pr_info("Starting kernel...\n\n");
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
                  * Define tg_dim_x/y: number of tiles in each tile group
@@ -194,11 +198,11 @@ int kernel_appl_pagerank (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[G.n];
+                float host_result[G.n];
                 hb_mc_dma_dtoh_t dtoh = {
                   .d_addr = device_result,
                   .h_addr = (&host_result[0]),
-                  .size   = G.n * sizeof(uint32_t)
+                  .size   = G.n * sizeof(float)
                 };
                 BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh, 1));
 
@@ -208,14 +212,14 @@ int kernel_appl_pagerank (int argc, char **argv) {
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
-                // for (int i = 0; i < G.n; i++) {
-                //   printf("result[%d] = %d\n", i, host_result[i]);
-                //   if (host_result[i] != bfsLvls[i]) {
-                //      bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: 0x%08" PRIx32 " != bfsLvls[%d]: 0x%08" PRIx32 "\n",
-                //                 i, host_result[i], i, bfsLvls[i]);
-                //     return HB_MC_FAIL;
-                //   }
-                // }
+                double error = 0.0;
+                for (size_t i = 0; i < G.n; i++) {
+                  bsg_pr_info("PageRank at vertex %d = %f : %f\n", i, host_result[i], p_curr[i]);
+                  error += fabs(host_result[i] - p_curr[i]);
+                }
+                if (error > 0.0001) {
+                  return HB_MC_FAIL;
+                }
 
         }
         BSG_CUDA_CALL(hb_mc_device_finish(&device));
