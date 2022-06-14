@@ -3,12 +3,22 @@
 #include "appl.hpp"
 #include "ligra.h"
 
+float fabs( float x ) {
+  if (x > 0) {
+    return x;
+  } else {
+    return -x;
+  }
+}
+
 template <class vertex>
 struct PR_F {
   vertex* V;
   float *Delta, *nghSum;
-  PR_F( vertex* _V, float* _Delta, float* _nghSum )
-      : V( _V ), Delta( _Delta ), nghSum( _nghSum )
+  int* locks;
+  PR_F( vertex* _V, float* _Delta, float* _nghSum, int* _locks )
+      : V( _V ), Delta( _Delta ), nghSum( _nghSum ),
+        locks( _locks )
   {
   }
   inline bool update( uintE s, uintE d )
@@ -19,11 +29,18 @@ struct PR_F {
   }
   inline bool updateAtomic( uintE s, uintE d )
   {
-    volatile float oldV, newV;
-    do { // basically a fetch-and-add
-      oldV = nghSum[d];
-      newV = oldV + Delta[s] / V[s].getOutDegree();
-    } while ( !CAS( &nghSum[d], oldV, newV ) );
+    int* lock_ptr = &(locks[d]);
+    // lock
+    int lock_val = 1;
+    do {
+      lock_val = bsg_amoswap_aq(lock_ptr, 1);
+    } while (lock_val != 0);
+    asm volatile("": : :"memory");
+    float oldV = nghSum[d];
+    nghSum[d] += Delta[s] / V[s].getOutDegree();
+    // unlock
+    asm volatile("": : :"memory");
+    bsg_amoswap_rl(lock_ptr, 0);
     return oldV == 0.0;
   }
   inline bool cond( uintE d ) { return cond_true( d ); }
@@ -80,6 +97,81 @@ struct PR_Vertex_Reset {
     return 1;
   }
 };
+
+template <class vertex>
+void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
+{
+  const uintE n        = GA.n;
+  const float damping  = 0.85;
+  const float epsilon  = 0.0000001;
+  const float epsilon2 = 0.01;
+
+  float  one_over_n = 1 / (float)n;
+  float*          p = newA( float, n );
+  float*      Delta = newA( float, n );
+  float*     nghSum = newA( float, n );
+  bool*    frontier = newA( bool,  n );
+  bool*         all = newA( bool,  n );
+  int*        locks = newA( int,   n );
+
+  appl::parallel_for( uintE( 0 ), n, [&]( uintE i ) {
+    p[i]        = 0.0;        // one_over_n;
+    Delta[i]    = one_over_n; // initial delta propagation from each vertex
+    nghSum[i]   = 0.0;
+    frontier[i] = 1;
+    all[i]      = 1;
+    locks       = 0;
+  } );
+
+  vertexSubset Frontier( n, n, frontier );
+  vertexSubset All( n, n, all ); // all vertices
+
+  uint32_t round = 0;
+  while ( round++ < maxIters ) {
+    edgeMap( GA, Frontier, PR_F<vertex>( GA.V, Delta, nghSum, locks ), 0,
+             no_output );
+    vertexSubset active =
+        ( round == 1 )
+            ? vertexFilter(
+                  All, PR_Vertex_F_FirstRound( p, Delta, nghSum, damping,
+                                               one_over_n, epsilon2 ) )
+            : vertexFilter( All, PR_Vertex_F( p, Delta, nghSum, damping,
+                                              epsilon2 ) );
+    // compute L1-norm (use nghSum as temp array)
+    {
+      appl::parallel_for(
+          uintE( 0 ), n, [&]( uintE i ) { nghSum[i] = fabs( Delta[i] ); } );
+    }
+
+    // float L1_norm = sequence::plusReduce( nghSum, n );
+    float L1_norm = appl::parallel_reduce(uintE(0), n, 0.0f,
+        [&](uintE start, uintE end, float initV) {
+          float psum = initV;
+          for (uintE i = start; i < end; i++) {
+            psum += nghSum[i];
+          }
+          return psum;
+        },
+        [](float x, float y) { return x + y; }
+    );
+
+    if ( L1_norm < epsilon )
+      break;
+    // reset
+    vertexMap( All, PR_Vertex_Reset( nghSum ) );
+    Frontier.del();
+    Frontier = active;
+  }
+
+  // dump
+  for (size_t i = 0; i < n; i++) {
+    bsg_print_float(p[i]);
+    results[i] = p[i];
+  }
+
+  Frontier.del();
+  All.del();
+}
 
 extern "C" __attribute__ ((noinline))
 int kernel_appl_pagerank_delta(int* results, symmetricVertex* V, int n, int m, uint32_t maxIters, int* dram_buffer) {

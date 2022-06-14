@@ -208,12 +208,12 @@ int kernel_appl_pagerank_delta (int argc, char **argv) {
                 }
 
                 Frontier.del();
+                All.del();
 
                 for (size_t i = 0; i < n; i++) {
                   bsg_pr_info("PageRank at vertex %d = %f\n", i, p[i]);
                 }
 
-                exit(1);
                 bsg_pr_info("Starting kernel...\n\n");
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
