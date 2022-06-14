@@ -180,7 +180,7 @@ int kernel_appl_pagerank_delta (int argc, char **argv) {
                 uint32_t iter = 0;
                 while ( iter++ < maxIters ) {
                   edgeMap( G, Frontier, PR_F<symmetricVertex>( G.V, Delta, nghSum ), 0,
-                           no_output | dense_forward );
+                           no_output );
                   vertexSubset active =
                     ( iter == 1 )
                       ? vertexFilter(
