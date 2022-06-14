@@ -113,7 +113,7 @@ include $(EXAMPLES_PATH)/cuda/appl-riscv.mk
 #
 # SIM_ARGS: Use this to pass arguments to the simulator
 ###############################################################################
-C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME) $(APP_PATH)/inputs/$(graph-input).al 0 $(symmetric) 1
+C_ARGS ?= $(BSG_MANYCORE_KERNELS) $(KERNEL_NAME) $(APP_PATH)/../param-appl-bfs/inputs/$(graph-input).al 0 $(symmetric) 1
 
 SIM_ARGS ?=
 
