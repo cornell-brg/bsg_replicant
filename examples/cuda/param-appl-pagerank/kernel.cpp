@@ -73,12 +73,13 @@ struct PR_Vertex_Reset {
 template <class vertex>
 void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
 {
+  bsg_cuda_print_stat_start(1);
   const uintE n       = GA.n;
   const float damping = 0.85, epsilon = 0.0000001;
 
   float  one_over_n = 1 / (float)n;
-  float* p_curr     = newA( float, n );
-  float* p_next     = newA( float, n );
+  float* p_curr     = results;
+  float* p_next     = &(results[n]);
   bool* frontier    = newA( bool, n );
   appl::parallel_for( uintE( 0 ), n,
       [&]( uintE i ) {
@@ -89,19 +90,29 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
   );
 
   vertexSubset Frontier( n, n, frontier );
+  bsg_cuda_print_stat_end(1);
 
   uint32_t iter = 0;
   while ( iter++ < maxIters ) {
+    bsg_cuda_print_stat_start(2);
     edgeMap( GA, Frontier, PR_F<vertex>( p_curr, p_next, GA.V ), 0,
              no_output );
+    bsg_cuda_print_stat_end(2);
+
+    bsg_cuda_print_stat_start(3);
     vertexMap( Frontier, PR_Vertex_F( p_curr, p_next, damping, n ) );
+    bsg_cuda_print_stat_end(3);
+
+    bsg_cuda_print_stat_start(4);
     // compute L1-norm between p_curr and p_next
     {
       appl::parallel_for( uintE( 0 ), n, [&]( uintE i ) {
         p_curr[i] = fabs( p_curr[i] - p_next[i] );
       } );
     }
+    bsg_cuda_print_stat_end(4);
 
+    bsg_cuda_print_stat_start(5);
     //float L1_norm = sequence::plusReduce( p_curr, n );
     float L1_norm = appl::parallel_reduce(uintE(0), n, 0.0f,
         [&](uintE start, uintE end, float initV) {
@@ -113,6 +124,7 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
         },
         [](float x, float y) { return x + y; }
     );
+    bsg_cuda_print_stat_end(5);
 
     bsg_print_int(10086);
     bsg_print_int(iter);
@@ -121,14 +133,11 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
       break;
 
     // reset p_curr
+
+    bsg_cuda_print_stat_start(6);
     vertexMap( Frontier, PR_Vertex_Reset( p_curr ) );
     swap( p_curr, p_next );
-  }
-
-  // dump
-  for (size_t i = 0; i < n; i++) {
-    bsg_print_float(p_curr[i]);
-    results[i] = p_curr[i];
+    bsg_cuda_print_stat_end(6);
   }
 
   Frontier.del();

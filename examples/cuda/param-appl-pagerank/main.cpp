@@ -116,7 +116,7 @@ int kernel_appl_pagerank (int argc, char **argv) {
                  ******************************************************************************************************************/
 
                 eva_t device_result;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, G.n * sizeof(uint32_t), &device_result)); // buffer for return results
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, 2 * G.n * sizeof(uint32_t), &device_result)); // buffer for return results
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
 
@@ -198,11 +198,11 @@ int kernel_appl_pagerank (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                float host_result[G.n];
+                float host_result[2 * G.n];
                 hb_mc_dma_dtoh_t dtoh = {
                   .d_addr = device_result,
                   .h_addr = (&host_result[0]),
-                  .size   = G.n * sizeof(float)
+                  .size   = 2 * G.n * sizeof(float)
                 };
                 BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh, 1));
 
@@ -212,10 +212,11 @@ int kernel_appl_pagerank (int argc, char **argv) {
                  ******************************************************************************************************************/
                 BSG_CUDA_CALL(hb_mc_device_program_finish(&device));
 
+                size_t offset = (maxIters % 2 == 0) ? 0 : G.n;
                 double error = 0.0;
                 for (size_t i = 0; i < G.n; i++) {
-                  bsg_pr_info("PageRank at vertex %d = %f : %f\n", i, host_result[i], p_curr[i]);
-                  error += fabs(host_result[i] - p_curr[i]);
+                  bsg_pr_info("PageRank at vertex %d = %f : %f\n", i, host_result[i + offset], p_curr[i]);
+                  error += fabs(host_result[i + offset] - p_curr[i]);
                 }
                 if (error > 0.0001) {
                   return HB_MC_FAIL;
