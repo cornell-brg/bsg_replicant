@@ -26,18 +26,18 @@ struct PR_F {
       : p_curr( _p_curr ), p_next( _p_next ), V( _V )
   {
   }
-  inline bool update( uintE s, uintE d )
+  inline bool update( uintE s, uintE d ) const
   { // update function applies PageRank equation
     p_next[d] += p_curr[s] / V[s].getOutDegree();
     return 1;
   }
-  inline bool updateAtomic( uintE s, uintE d )
+  inline bool updateAtomic( uintE s, uintE d ) const
   { // atomic Update
     // writeAdd( &p_next[d], p_curr[s] / V[s].getOutDegree() );
     bsg_print_int(7800);
     return 1;
   }
-  inline bool cond( intT d ) { return 1; }
+  inline bool cond( intT d ) const { return 1; }
 };
 
 // vertex map function to update its p value according to PageRank
@@ -52,7 +52,7 @@ struct PR_Vertex_F {
         addedConstant( ( 1 - _damping ) * ( 1 / (float)n ) )
   {
   }
-  inline bool operator()( uintE i )
+  inline bool operator()( uintE i ) const
   {
     p_next[i] = damping * p_next[i] + addedConstant;
     return 1;
@@ -63,7 +63,7 @@ struct PR_Vertex_F {
 struct PR_Vertex_Reset {
   float* p_curr;
   PR_Vertex_Reset( float* _p_curr ) : p_curr( _p_curr ) {}
-  inline bool operator()( uintE i )
+  inline bool operator()( uintE i ) const
   {
     p_curr[i] = 0.0;
     return 1;
@@ -82,7 +82,7 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
   float* p_next     = &(results[n]);
   bool* frontier    = newA( bool, n );
   appl::parallel_for( uintE( 0 ), n,
-      [&]( uintE i ) {
+      [=]( uintE i ) {
         p_curr[i]   = one_over_n;
         p_next[i]   = 0;
         frontier[i] = 1;
@@ -106,7 +106,7 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
     bsg_cuda_print_stat_start(4);
     // compute L1-norm between p_curr and p_next
     {
-      appl::parallel_for( uintE( 0 ), n, [&]( uintE i ) {
+      appl::parallel_for( uintE( 0 ), n, [=]( uintE i ) {
         p_curr[i] = fabs( p_curr[i] - p_next[i] );
       } );
     }
@@ -115,7 +115,7 @@ void Compute( graph<vertex>& GA, uint32_t maxIters, float* results )
     bsg_cuda_print_stat_start(5);
     //float L1_norm = sequence::plusReduce( p_curr, n );
     float L1_norm = appl::parallel_reduce(uintE(0), n, 0.0f,
-        [&](uintE start, uintE end, float initV) {
+        [p_curr](uintE start, uintE end, float initV) {
           float psum = initV;
           for (uintE i = start; i < end; i++) {
             psum += p_curr[i];
