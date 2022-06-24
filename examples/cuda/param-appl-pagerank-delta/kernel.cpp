@@ -21,13 +21,13 @@ struct PR_F {
         locks( _locks )
   {
   }
-  inline bool update( uintE s, uintE d )
+  inline bool update( uintE s, uintE d ) const
   {
     float oldVal = nghSum[d];
     nghSum[d] += Delta[s] / V[s].getOutDegree();
     return oldVal == 0;
   }
-  inline bool updateAtomic( uintE s, uintE d )
+  inline bool updateAtomic( uintE s, uintE d ) const
   {
     int* lock_ptr = &(locks[d]);
     // lock
@@ -43,7 +43,7 @@ struct PR_F {
     bsg_amoswap_rl(lock_ptr, 0);
     return oldV == 0.0;
   }
-  inline bool cond( uintE d ) { return cond_true( d ); }
+  inline bool cond( uintE d ) const { return cond_true( d ); }
 };
 
 struct PR_Vertex_F_FirstRound {
@@ -58,7 +58,7 @@ struct PR_Vertex_F_FirstRound {
         epsilon2( _epsilon2 )
   {
   }
-  inline bool operator()( uintE i )
+  inline bool operator()( uintE i ) const
   {
     Delta[i] = damping * nghSum[i] + addedConstant;
     p[i] += Delta[i];
@@ -76,7 +76,7 @@ struct PR_Vertex_F {
         epsilon2( _epsilon2 )
   {
   }
-  inline bool operator()( uintE i )
+  inline bool operator()( uintE i ) const
   {
     Delta[i] = nghSum[i] * damping;
     if ( fabs( Delta[i] ) > epsilon2 * p[i] ) {
@@ -91,7 +91,7 @@ struct PR_Vertex_F {
 struct PR_Vertex_Reset {
   float* nghSum;
   PR_Vertex_Reset( float* _nghSum ) : nghSum( _nghSum ) {}
-  inline bool operator()( uintE i )
+  inline bool operator()( uintE i ) const
   {
     nghSum[i] = 0.0;
     return 1;
