@@ -41,10 +41,10 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 2049
+#define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
-#define N 1024
+#define N 2048
 #define GRAIN_SIZE 16
 
 /*!
@@ -113,13 +113,16 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                void *dst = (void *) ((intptr_t) A_device);
-                void *src = (void *) &A_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(uint32_t), HB_MC_MEMCPY_TO_DEVICE)); /* Copy A to the device  */
-
-                dst = (void *) ((intptr_t) B_device);
-                src = (void *) &B_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * sizeof(uint32_t), HB_MC_MEMCPY_TO_DEVICE)); /* Copy B to the device */
+                hb_mc_dma_htod_t htod[2] = {{
+                  .d_addr = A_device,
+                  .h_addr = A_host,
+                  .size   = N * sizeof(uint32_t)
+                }, {
+                  .d_addr = B_device,
+                  .h_addr = B_host,
+                  .size   = N * sizeof(uint32_t)
+                }};
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, 2));
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -148,9 +151,12 @@ int kernel_vec_add (int argc, char **argv) {
                  * Copy result matrix back from device DRAM into host memory.
                  ******************************************************************************************************************/
                 uint32_t C_host[N];
-                src = (void *) ((intptr_t) C_device);
-                dst = (void *) &C_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST)); /* copy C to the host */
+                hb_mc_dma_dtoh_t dtoh_C = {
+                  .d_addr = C_device,
+                  .h_addr = C_host,
+                  .size   = N * sizeof(uint32_t)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh_C, 1));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
