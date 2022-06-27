@@ -2,13 +2,14 @@
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
-#define merge_size 16
-#define quick_size 16
-#define INSERTIONSIZE 20
+#define merge_size 32
+#define quick_size 32
+#define INSERTIONSIZE 16
 
 typedef uint32_t ELM;
 
 void ELM_memcpy(ELM* dest, ELM* src, size_t n) {
+  bsg_unroll(32)
   for( size_t i = 0; i < n; i++ ) {
     dest[i] = src[i];
   }
