@@ -44,24 +44,57 @@
 #define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
-#define N 2048
-#define GRAIN_SIZE 16
+#define N MATRIX_N
+typedef uint32_t ELM;
 
-/*!
- * Runs the vector addition a one 2x2 tile groups. A[N] + B[N] --> C[N]
- * Grid dimensions are prefixed at 1x1. --> block_size_x is set to N.
-*/
+#define swap( a, b )                                                     \
+  {                                                                      \
+    ELM tmp;                                                             \
+    tmp = a;                                                             \
+    a   = b;                                                             \
+    b   = tmp;                                                           \
+  }
 
+static unsigned long rand_nxt = 0;
 
-void host_vec_add (uint32_t *A, uint32_t *B, uint32_t *C, int size) {
-        for (int i = 0; i < size; i ++) {
-                C[i] = A[i] + B[i];
-        }
-        return;
+static inline unsigned long my_rand( void )
+{
+  rand_nxt = rand_nxt * 1103515245 + 12345;
+  return rand_nxt;
 }
 
+static inline void my_srand( unsigned long seed )
+{
+  rand_nxt = seed;
+}
 
-int kernel_vec_add (int argc, char **argv) {
+void scramble_array( ELM* arr, unsigned long size )
+{
+  unsigned long i;
+  unsigned long j;
+
+  for ( i = 0; i < size; ++i ) {
+    j = my_rand();
+    j = j % size;
+    swap( arr[i], arr[j] );
+  }
+}
+
+void fill_array( ELM* arr, unsigned long size )
+{
+  unsigned long i;
+
+  my_srand( 1 );
+  /* first, fill with integers 1..size */
+  for ( i = 0; i < size; ++i ) {
+    arr[i] = i;
+  }
+
+  /* then, scramble randomly */
+  scramble_array( arr, size );
+}
+
+int kernel_appl_cilksort (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
         struct arguments_path args = {NULL, NULL};
@@ -70,7 +103,7 @@ int kernel_vec_add (int argc, char **argv) {
         bin_path = args.path;
         test_name = args.name;
 
-        bsg_pr_test_info("Running the vvadd WS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
+        bsg_pr_test_info("Running the Cilk5 CilkSort WS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
 
         srand(time);
 
@@ -93,9 +126,8 @@ int kernel_vec_add (int argc, char **argv) {
                  ******************************************************************************************************************/
 
                 eva_t A_device, B_device, C_device;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(uint32_t), &A_device)); /* allocate A[N] on the device */
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(uint32_t), &B_device)); /* allocate B[N] on the device */
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(uint32_t), &C_device)); /* allocate C[N] on the device */
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(ELM), &A_device)); /* allocate A[N*N] on the device */
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * sizeof(ELM), &B_device)); /* allocate B[N*N] on the device */
 
                 eva_t dram_buffer;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
@@ -103,26 +135,21 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Allocate memory on the host for A & B and initialize with random values.
                  ******************************************************************************************************************/
-                uint32_t A_host[N]; /* allocate A[N] on the host */
-                uint32_t B_host[N]; /* allocate B[N] on the host */
-                for (int i = 0; i < N; i++) { /* fill A with arbitrary data */
-                        A_host[i] = rand() & 0xFFFF;
-                        B_host[i] = rand() & 0xFFFF;
-                }
+                ELM* array  = (ELM*)malloc( N * sizeof( ELM ) );
+                ELM* tmp    = (ELM*)malloc( N * sizeof( ELM ) );
+                ELM* result = (ELM*)malloc( N * sizeof( ELM ) );
+
+                fill_array( array, N );
 
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                hb_mc_dma_htod_t htod[2] = {{
+                hb_mc_dma_htod_t htod = {
                   .d_addr = A_device,
-                  .h_addr = A_host,
-                  .size   = N * sizeof(uint32_t)
-                }, {
-                  .d_addr = B_device,
-                  .h_addr = B_host,
-                  .size   = N * sizeof(uint32_t)
-                }};
-                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, htod, 2));
+                  .h_addr = array,
+                  .size   = N * sizeof(ELM)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod, 1));
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -135,12 +162,12 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[6] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
+                int cuda_argv[4] = {A_device, B_device, N, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_vvadd", 6, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_cilksort", 4, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -150,11 +177,10 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result matrix back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t C_host[N];
                 hb_mc_dma_dtoh_t dtoh_C = {
-                  .d_addr = C_device,
-                  .h_addr = C_host,
-                  .size   = N * sizeof(uint32_t)
+                  .d_addr = A_device,
+                  .h_addr = result,
+                  .size   = N * sizeof(ELM)
                 };
                 BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh_C, 1));
 
@@ -166,21 +192,17 @@ int kernel_vec_add (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Calculate the expected result using host code and compare the results.
                  ******************************************************************************************************************/
-                uint32_t C_expected[N];
-                host_vec_add (A_host, B_host, C_expected, N);
-
-
-                int mismatch = 0;
-                for (int i = 0; i < N; i++) {
-                        if (A_host[i] + B_host[i] != C_host[i]) {
-                                bsg_pr_err(BSG_RED("Mismatch: ") "C[%d]:  0x%08" PRIx32 " + 0x%08" PRIx32 " = 0x%08" PRIx32 "\t Expected: 0x%08" PRIx32 "\n",
-                                           i , A_host[i], B_host[i], C_host[i], C_expected[i]);
-                                mismatch = 1;
-                        }
+                int success = 1;
+                for ( int i = 0; i < N; ++i ) {
+                  printf("result[%d] = %d\n", i, result[i]);
+                  if ( result[i] != i ) {
+                    success = 0;
+                    bsg_pr_err(BSG_RED("Mismatch: ") "result[%d]: %d != %d\n",
+                        i, result[i], i);
+                  }
                 }
-
-                if (mismatch) {
-                        return HB_MC_FAIL;
+                if ( !success ) {
+                  return HB_MC_FAIL;
                 }
         }
         BSG_CUDA_CALL(hb_mc_device_finish(&device));
@@ -188,4 +210,4 @@ int kernel_vec_add (int argc, char **argv) {
         return HB_MC_SUCCESS;
 }
 
-declare_program_main("test_appl_vvadd", kernel_vec_add);
+declare_program_main("test_appl_cilksort", kernel_appl_cilksort);
