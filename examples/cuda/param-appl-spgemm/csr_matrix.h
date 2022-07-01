@@ -17,6 +17,7 @@ typedef struct csr_matrix {
 } csr_matrix_t;
 
 int  csr_matrix_init_from_coo(csr_matrix_t *csr, coo_matrix_t *coo);
+
 void csr_matrix_dest(csr_matrix_t *csr);
 #ifdef __cplusplus
 }
