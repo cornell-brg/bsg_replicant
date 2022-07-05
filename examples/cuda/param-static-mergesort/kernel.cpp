@@ -281,12 +281,9 @@ void cilkmerge( ELM* low1, ELM* high1, ELM* low2, ELM* high2,
    */
   *( lowdest + lowsize + 1 ) = *split1;
 
-  appl::parallel_invoke(
-      [&] { cilkmerge( low1, split1 - 1, low2, split2, lowdest ); },
-      [&] {
-        cilkmerge( split1 + 1, high1, split2 + 1, high2,
-                   lowdest + lowsize + 2 );
-      } );
+  cilkmerge( low1, split1 - 1, low2, split2, lowdest );
+  cilkmerge( split1 + 1, high1, split2 + 1, high2,
+             lowdest + lowsize + 2 );
 
   return;
 }
@@ -335,10 +332,10 @@ void cilksort( ELM* low, ELM* tmp, int32_t size )
 // we do cilkosrt(mergesort) at per core level
 // then do cuda-style merge at top level
 void static_sort( ELM* low, ELM* tmp, int32_t size ) {
-  // int32_t per_core = size / appl::get_nthreads();
+  // parallel sort
+  int32_t per_core  = (size-1) / appl::get_nthreads() + 1;
   appl::parallel_for_1( size_t( 0 ), appl::get_nthreads(),
-      [low, tmp, size]( size_t i ) {
-        int32_t per_core  = (size-1) / appl::get_nthreads() + 1;
+      [low, tmp, size, per_core]( size_t i ) {
         int32_t start     = i * per_core;
         int32_t end       = (start + per_core) > size ? size : (start + per_core);
         int32_t core_size = (end - start) > 0 ? (end - start) : 0;
@@ -347,6 +344,49 @@ void static_sort( ELM* low, ELM* tmp, int32_t size ) {
         bsg_print_int(core_size);
         cilksort( low + start, tmp + start, core_size);
       } );
+  // recursive merge
+  int32_t factor = 1;
+  ELM* b1 = low;
+  ELM* b2 = tmp;
+  ELM* b1_end = b1 + size - 1;
+  ELM* b2_end = b2 + size - 1;
+  int32_t iters = 0;
+  while( factor != appl::get_nthreads() ) {
+    bsg_print_int(++iters);
+    // merge
+    appl::parallel_for_1( size_t( 0 ), appl::get_nthreads(),
+        [b1, b2, b1_end, b2_end, size, factor, per_core]( size_t i ) {
+          if (i % (factor*2) == 0) {
+            ELM* low1  = b1 + i * per_core;
+            ELM* high1 = low1 + per_core * factor - 1;
+            high1 = high1 > b1_end ? b1_end : high1;
+            ELM* low2  = high1 + 1;
+            ELM* high2 = low2 + per_core * factor - 1;
+            high2 = high2 > b1_end ? b1_end : high2;
+
+            if (low1 > high1) {
+              return;
+            }
+
+            bsg_print_hexadecimal((intptr_t)low1);
+            bsg_print_hexadecimal((intptr_t)high1);
+            bsg_print_hexadecimal((intptr_t)low2);
+            bsg_print_hexadecimal((intptr_t)high2);
+            bsg_print_hexadecimal((intptr_t)(b2 + i * per_core));
+
+            cilkmerge( low1, high1, low2, high2, b2 + i * per_core );
+
+          }
+        } );
+    // debug
+    bsg_print_int(11233);
+    for (size_t i = 0; i < size; i++) {
+      bsg_print_int(b2[i]);
+    }
+    factor = factor * 2;
+    swap_indices( b1, b2 );
+    swap_indices( b1_end, b2_end );
+  }
 }
 
 extern "C" __attribute__ ((noinline))

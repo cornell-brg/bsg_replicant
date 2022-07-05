@@ -55,6 +55,12 @@ typedef uint32_t ELM;
     b   = tmp;                                                           \
   }
 
+/* Function to check if x is power of 2*/
+int isPowerOfTwo( int n )
+{
+  return ( ceil( log2( n ) ) == floor( log2( n ) ) );
+}
+
 static unsigned long rand_nxt = 0;
 
 static inline unsigned long my_rand( void )
@@ -117,6 +123,11 @@ int kernel_static_mergesort (int argc, char **argv) {
         hb_mc_pod_id_t pod;
         hb_mc_device_foreach_pod_id(&device, pod)
         {
+                if (!isPowerOfTwo(bsg_tiles_X * bsg_tiles_Y)) {
+                  bsg_pr_err(BSG_RED("Error: ") "tile group size has to be power of 2\n");
+                  return HB_MC_FAIL;
+                }
+
                 bsg_pr_info("Loading program for test %s onto pod %d\n", test_name, pod);
                 BSG_CUDA_CALL(hb_mc_device_set_default_pod(&device, pod));
                 BSG_CUDA_CALL(hb_mc_device_program_init(&device, bin_path, ALLOC_NAME, 0));
@@ -177,6 +188,16 @@ int kernel_static_mergesort (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result matrix back from device DRAM into host memory.
                  ******************************************************************************************************************/
+                int32_t iters  = 0;
+                int32_t factor = 1;
+                while( factor != bsg_tiles_X * bsg_tiles_Y) {
+                  ++iters;
+                  factor = factor * 2;
+                }
+                if (iters % 2 == 1) {
+                  // merged data is in tmp buffer
+                  A_device = B_device;
+                }
                 hb_mc_dma_dtoh_t dtoh_C = {
                   .d_addr = A_device,
                   .h_addr = result,
