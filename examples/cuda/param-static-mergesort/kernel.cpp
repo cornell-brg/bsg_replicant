@@ -2,9 +2,9 @@
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
-#define merge_size 8
-#define quick_size 8
-#define INSERTIONSIZE 4
+#define merge_size 64
+#define quick_size 64
+#define INSERTIONSIZE 20
 
 typedef uint32_t ELM;
 
