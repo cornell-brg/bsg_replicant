@@ -1,1 +1,5 @@
 TESTS += $(call test-name,9,4,4,STATIC)
+TESTS += $(call test-name,127,4,4,STATIC)
+TESTS += $(call test-name,313,4,4,STATIC)
+TESTS += $(call test-name,90,4,4,STATIC)
+TESTS += $(call test-name,513,2,2,STATIC)

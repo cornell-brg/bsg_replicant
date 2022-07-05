@@ -2,9 +2,9 @@
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
-#define merge_size 32
-#define quick_size 32
-#define INSERTIONSIZE 16
+#define merge_size 8
+#define quick_size 8
+#define INSERTIONSIZE 4
 
 typedef uint32_t ELM;
 
@@ -339,9 +339,6 @@ void static_sort( ELM* low, ELM* tmp, int32_t size ) {
         int32_t start     = i * per_core;
         int32_t end       = (start + per_core) > size ? size : (start + per_core);
         int32_t core_size = (end - start) > 0 ? (end - start) : 0;
-        bsg_print_int(start);
-        bsg_print_int(end);
-        bsg_print_int(core_size);
         cilksort( low + start, tmp + start, core_size);
       } );
   // recursive merge
@@ -352,7 +349,6 @@ void static_sort( ELM* low, ELM* tmp, int32_t size ) {
   ELM* b2_end = b2 + size - 1;
   int32_t iters = 0;
   while( factor != appl::get_nthreads() ) {
-    bsg_print_int(++iters);
     // merge
     appl::parallel_for_1( size_t( 0 ), appl::get_nthreads(),
         [b1, b2, b1_end, b2_end, size, factor, per_core]( size_t i ) {
@@ -368,21 +364,18 @@ void static_sort( ELM* low, ELM* tmp, int32_t size ) {
               return;
             }
 
+            /*
             bsg_print_hexadecimal((intptr_t)low1);
             bsg_print_hexadecimal((intptr_t)high1);
             bsg_print_hexadecimal((intptr_t)low2);
             bsg_print_hexadecimal((intptr_t)high2);
             bsg_print_hexadecimal((intptr_t)(b2 + i * per_core));
+            */
 
             cilkmerge( low1, high1, low2, high2, b2 + i * per_core );
 
           }
         } );
-    // debug
-    bsg_print_int(11233);
-    for (size_t i = 0; i < size; i++) {
-      bsg_print_int(b2[i]);
-    }
     factor = factor * 2;
     swap_indices( b1, b2 );
     swap_indices( b1_end, b2_end );
