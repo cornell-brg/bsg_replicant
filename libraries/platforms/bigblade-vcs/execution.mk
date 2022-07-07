@@ -55,7 +55,7 @@ stats: profile.log
 	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py/ python3 -m vanilla_parser --only stats_parser --stats $(VANILLA_STATS) --vcache-stats $(VCACHE_STATS)  --tile-group --tile
 
 pchistpdf: pc-histogram.log
-	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py/ python3 $(BSG_MANYCORE_DIR)/software/py/pc_histogram.py
+	PYTHONPATH=$(BSG_MANYCORE_DIR)/software/py/ python3 $(BSG_MANYCORE_DIR)/software/py/pc_histogram.py --no-pc-hist
 
 %.log: main.so $(BSG_MANYCORE_KERNELS) 
 	$(filter %/simv, $^) $(SIM_ARGS) +c_args="$(C_ARGS)" +c_path=$(CURDIR)/main.so 2>&1 | tee $@
