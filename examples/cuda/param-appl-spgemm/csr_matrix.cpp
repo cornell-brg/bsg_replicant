@@ -12,23 +12,23 @@ int csr_matrix_init_from_coo(csr_matrix_t *csr, coo_matrix_t *coo)
     int *rowcnt;
 
     csr->n = coo->n;
-    csr->nz = coo->nz;
+    csr->nnz = coo->nz;
     printf("Initializing CSR for %dx%d Matrix with %d NZ\n"
            , coo->n
            , coo->n
            , coo->nz);
     bsg_pr_dbg("%s: allocating output buffers\n", __func__);
     // allocate output buffers
-    BSG_CUDA_CALL(try_malloc(sizeof(csr_matrix_tuple_t)*(csr->nz), (void**)&tuples));
+    BSG_CUDA_CALL(try_malloc(sizeof(csr_matrix_tuple_t)*(csr->nnz), (void**)&tuples));
     BSG_CUDA_CALL(try_malloc(sizeof(int)*(csr->n+1), (void**)&rowptrs));
 
-    rowptrs[csr->n] = csr->nz;
+    rowptrs[csr->n] = csr->nnz;
 
     // allocate temporary row count buffer
     bsg_pr_dbg("%s: allocating temporary count buffers\n", __func__);
     BSG_CUDA_CALL(try_malloc(sizeof(int)*csr->n, (void**)&rowcnt));
     memset(rowcnt, 0, sizeof(int)*csr->n);
-    for (int nz = 0; nz < csr->nz; nz++) {
+    for (int nz = 0; nz < csr->nnz; nz++) {
         rowcnt[coo->nonzeros[nz].row]++;
     }
 
@@ -43,7 +43,7 @@ int csr_matrix_init_from_coo(csr_matrix_t *csr, coo_matrix_t *coo)
     // copy non-zeros one-by-one
     bsg_pr_dbg("%s: copying nonzeros\n", __func__);
     memset(rowcnt, 0, sizeof(int)*csr->n);
-    for (int nz = 0; nz < csr->nz; nz++) {
+    for (int nz = 0; nz < csr->nnz; nz++) {
         coo_matrix_tuple_t *tuple = &coo->nonzeros[nz];
         // bsg_pr_dbg("%s: copying nz %d: row %d, col %d, val %f\n"
         //            , __func__
@@ -88,7 +88,7 @@ int csr_matrix_init_from_coo(csr_matrix_t *csr, coo_matrix_t *coo)
 void csr_matrix_dest(csr_matrix_t *csr)
 {
     csr->n = 0;
-    csr->nz = 0;
+    csr->nnz = 0;
     free(csr->rowptrs);
     free(csr->nonzeros);
     csr->rowptrs = NULL;

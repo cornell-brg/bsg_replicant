@@ -11,7 +11,7 @@ typedef struct csr_matrix_tuple {
 
 typedef struct csr_matrix {
     int  n;
-    int  nz;
+    int  nnz;
     int  *rowptrs;
     csr_matrix_tuple_t *nonzeros;
 } csr_matrix_t;

@@ -25,12 +25,12 @@ int dev_csr_matrix_init(csr_matrix_t *csr, hb_mc_eva_t *csr_dev_ptr)
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, sizeof(dev_csr_matrix_t), &ptr));
 
     // copy nonzeros and rowptrs
-    hb_mc_dma_hotod_t hotd [] = {
+    hb_mc_dma_htod_t htod [] = {
         { dev_csr->rowptrs, csr->rowptrs, dev_csr->n * sizeof(int) },
-        { dev_csr->nonzeros, csr->nonzeros, dev_csr->nnz * sizeof(csr_matrix_tuple_t) }
+        { dev_csr->nonzeros, csr->nonzeros, dev_csr->nnz * sizeof(csr_matrix_tuple_t) },
         { ptr, dev_csr, sizeof(dev_csr_matrix_t) }
     };
-    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, &htod, 3));
+    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, htod, 3));
 
     *csr_dev_ptr = ptr;
     return HB_MC_SUCCESS;
@@ -49,11 +49,11 @@ int dev_csr_matrix_init_empty(csr_matrix_t *csr, hb_mc_eva_t *csr_dev_ptr)
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, sizeof(dev_csr_matrix_t), &ptr));
 
     // copy nonzeros and rowptrs
-    hb_mc_dma_hotod_t hotd [] = {
+    hb_mc_dma_htod_t htod [] = {
         { dev_csr->rowptrs, csr->rowptrs, dev_csr->n * sizeof(int) },
         { ptr, dev_csr, sizeof(dev_csr_matrix_t) }
     };
-    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, &htod, 2));
+    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, htod, 2));
 
     *csr_dev_ptr = ptr;
     return HB_MC_SUCCESS;
@@ -88,17 +88,21 @@ int SpGEMMMain(int argc, char *argv[])
     BSG_CUDA_CALL(dev_csr_matrix_init_empty(&csr, &C_dev));
 
     hb_mc_eva_t C_row_nnz, C_tmp;
-    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr->n * sizeof(int), &C_row_nnz));
-    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr->n * sizeof(hb_mc_eva_t), &C_tmp));
+    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr.n * sizeof(int), &C_row_nnz));
+    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr.n * sizeof(hb_mc_eva_t), &C_tmp));
 
     int kargc = 5;
     hb_mc_eva_t kargv [] = {A_dev, B_dev, C_dev, C_row_nnz, C_tmp};
-    BSG_CUDA_CALL(hb_mc_kernel_enqueue(&dev, gd, tg, "bfs", kargc, kargv));
+    hb_mc_dimension_t gd = {1 , 1};
+    hb_mc_dimension_t tg = {bsg_tiles_X , bsg_tiles_Y};
+    printf("Launching spgemm kernel\n");
+    BSG_CUDA_CALL(hb_mc_kernel_enqueue(&dev, gd, tg, "spgemm", kargc, kargv));
     BSG_CUDA_CALL(hb_mc_device_tile_groups_execute(&dev));
 
     // check the result
     //eigen_sparse_matrix_t matrix = eigen_sparse_matrix_from_coo(&coo);
-    
+    BSG_CUDA_CALL(hb_mc_device_program_finish(&dev));
+    BSG_CUDA_CALL(hb_mc_device_finish(&dev));
     coo_matrix_dest(&coo);
     csr_matrix_dest(&csr);
     
