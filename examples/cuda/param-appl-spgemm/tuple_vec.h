@@ -14,7 +14,7 @@ extern "C" {
     /**
      *  a tuple vec
      */
-    struct tuple_vec {
+    typedef struct tuple_vec {
         int           size;
         list_node_t   free;
         tuple_t       v[1];
@@ -46,7 +46,7 @@ extern "C" {
      * lists of free vectors
      */
     enum {
-        ,TUPLE_VEC_FREE_SMALL
+        TUPLE_VEC_FREE_SMALL
         ,TUPLE_VEC_FREE_MEDIUM
         ,TUPLE_VEC_FREE_LARGE
         ,TUPLE_VEC_FREE_HUGE
@@ -62,13 +62,13 @@ extern "C" {
     {
         // decide bucket 
         if (size <= 128) {
-            return TEST_VEC_FREE_SMALL;
+            return TUPLE_VEC_FREE_SMALL;
         } else if (size <= 1024) {
-            return TEST_VEC_FREE_MEDIUM;
+            return TUPLE_VEC_FREE_MEDIUM;
         } else if (size <= 8192){
-            return TEST_VEC_FREE_LARGE;
+            return TUPLE_VEC_FREE_LARGE;
         } else {
-            return TEST_VEC_FREE_N;
+            return TUPLE_VEC_FREE_N;
         }
     }
 
@@ -77,11 +77,11 @@ extern "C" {
     */
     inline int tuple_vec_bucket_to_size(int bkt) {
         switch (bkt) {
-        case TEST_VEC_FREE_SMALL:  return     128;
-        case TEST_VEC_FREE_MEDIUM: return    1024;
-        case TEST_VEC_FREE_LARGE:  return    8192;
-        case TEST_VEC_FREE_HUGE:   return INT_MAX;
-        default:                   return       0;
+        case TUPLE_VEC_FREE_SMALL:  return     128;
+        case TUPLE_VEC_FREE_MEDIUM: return    1024;
+        case TUPLE_VEC_FREE_LARGE:  return    8192;
+        case TUPLE_VEC_FREE_HUGE:   return INT_MAX;
+        default:                    return       0;
         }
     }
 
@@ -91,10 +91,15 @@ extern "C" {
     */
     tuple_t    *tuple_new(int size);
     inline void tuple_free(tuple_t *tp) {
-        tuple_vect *tv = tuple_vec_from_tuple(tp);
+        tuple_vec_t *tv = tuple_vec_from_tuple(tp);
         int bkt = tuple_vec_bucket(tv->size);
         list_append(&tuple_vec_free[bkt], &tv->free);
     }
+
+   /**
+    * initialize the lib
+    */    
+    void tuple_vec_libinit();
 
 #ifdef __cplusplus
 }

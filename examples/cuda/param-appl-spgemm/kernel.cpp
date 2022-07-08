@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "bsg_manycore.h"
 #include "bsg_manycore_atomic.h"
 #include "bsg_tile_config_vars.h"
@@ -10,7 +11,7 @@ static int floor_log2(int x)
 {
     int i = -1;
     int j = i+1;
-    while  ((1 << j) < x) {
+    while  ((1 << j) <= x) {
         i = j;
         j = j+1;
     }
@@ -19,7 +20,7 @@ static int floor_log2(int x)
 
 static int ceil_log2(int x)
 {
-    return i+1;
+    return floor_log2(x+1);
 }
 
 static int tree_rchild(int root)
@@ -37,9 +38,9 @@ static void parallel_scan(
     ,int *out
     ,int  n
     ) {
-    int *tree = appl::malloc(sizeof(int)*2*appl::get_nthreads());
+    int *tree = (int*)appl::appl_malloc(sizeof(int)*2*appl::get_nthreads());
 
-    appl::parallel_for(0, appl::get_nthreads(), [=](int tid){
+    appl::parallel_for(0, (int)appl::get_nthreads(), 1, [=](int tid){
             // calculate range
             int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
             int start = tid * region_size;
@@ -70,7 +71,7 @@ static void parallel_scan(
 
     // sync
     
-    appl::parallel_for(0, appl::get_nthreads(), [=](int tid){
+    appl::parallel_for(0, (int)appl::get_nthreads(), [=](int tid){
             // calculate range
             int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
             int start = tid * region_size;
@@ -120,17 +121,18 @@ static void scalar_row_product(
 
     // initialize a partial buffer
     tuple_dyn_vec_t Bv;
-    tuple_dyn_vec_init(&Bv, nnz);
-    Bv.size = nnz;
+    tuple_dyn_vec_init(&Bv, Bi_nnz);
+    Bv.size = Bi_nnz;
 
     // stall on off
     csr_matrix_tuple_t *nonzeros = &B->nonzeros[Bi_off];
-
+    bsg_print_int(4000000+Bi_nnz);
     for (int nz = 0; nz < Bi_nnz; nz++) {
         float Bij, Cij;
         int   Bj;
         Bij = nonzeros[nz].val;
         Bj  = nonzeros[nz].col;
+        bsg_print_int(5000000+Bj);        
         Cij = Aij * Bij;
         Bv.v[nz].col =  Bj;
         Bv.v[nz].val = Cij;
@@ -160,11 +162,12 @@ static void solve_row(
 
     tuple_dyn_vec_t Cv;
     tuple_dyn_vec_init(&Cv, 0);
-
+    bsg_print_int(2000000 + nnz);
     // for each nonzero entry in row A[i:]
-    for (int nz = 0; nz < nnz; nz++) {
+    for (int nz = 0; nz < nnz; nz++) {        
         int Bi    = nonzeros[nz].col;
         float Aij = nonzeros[nz].val;
+        bsg_print_int(3000000 + Bi);
         scalar_row_product(
              A
             ,B
@@ -184,18 +187,26 @@ static void solve_row(
 }
 
 extern "C" void spgemm(
+    // kernel arguments
     csr_matrix_t         *A
     ,csr_matrix_t        *B
     ,csr_matrix_t        *C
     ,int                 *C_row_nnz
     ,csr_matrix_tuple_t **C_tmp
+    // appl runtime
+    ,int *dram_buffer
     ) {
+
     appl::runtime_init(dram_buffer);
+    tuple_vec_libinit();
+    
     appl::sync();
-    bsg_cuda_print_stats_kernel_start();
+    bsg_cuda_print_stat_kernel_start();
+
     if (__bsg_id == 0) {
         // 1. solve for each row
         appl::parallel_for(0, A->n, [=](int Ci){
+                bsg_print_int(1000000 + Ci);
                 // fetch A_i row data
                 int Ci_off = A->rowptrs[Ci];
                 int Ci_nnz = A->rowptrs[Ci+1] - Ci_off;
@@ -216,12 +227,14 @@ extern "C" void spgemm(
         parallel_scan(C_row_nnz, C->rowptrs, C->n);
         
         // 3. copy
-        csr_matrix_tuple_t *C_nonzeros = appl::malloc(sizeof(csr_matrix_tuple_t) * C->nnz);
+        csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)appl::appl_malloc(
+            sizeof(csr_matrix_tuple_t) * C->nnz
+            );
         C->nonzeros = C_nonzeros;
         
         appl::parallel_for(0, A->n, [=](int Ci){
                 csr_matrix_tuple_t *src, *dst;
-                src = C_tmp[C_i];
+                src = C_tmp[Ci];
                 int Ci_off = C->rowptrs[Ci];
                 int Ci_nnz = C->rowptrs[Ci+1]-Ci_off;
                 dst = &C->nonzeros[Ci_off];
@@ -233,7 +246,7 @@ extern "C" void spgemm(
         appl::worker_thread_init();
     }
     appl::runtime_end();
-    bsg_cuda_print_stats_kernel_end();
+    bsg_cuda_print_stat_kernel_end();
     bsg_fence();
     appl::sync();
     return;

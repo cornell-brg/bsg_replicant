@@ -62,6 +62,6 @@ void tuple_dyn_vec_merge(tuple_dyn_vec_t  *first
                          ,tuple_dyn_vec_t *second
                          ,tuple_dyn_vec_t *merged_o);
     
-#ifdef
+#ifdef __cplusplus
 }
 #endif

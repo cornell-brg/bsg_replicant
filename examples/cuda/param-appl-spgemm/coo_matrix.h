@@ -15,6 +15,8 @@ typedef struct coo_matrix {
     coo_matrix_tuple_t *nonzeros; 
 } coo_matrix_t;
 
+void coo_matrix_dest(coo_matrix_t *mtx);
+
 #ifdef __cplusplus
 }
 #endif

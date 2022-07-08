@@ -1,3 +1,4 @@
+#define DEBUG
 #include <algorithm>
 #include <cstring>
 #include "bsg_manycore_cuda.h"
@@ -45,19 +46,19 @@ int csr_matrix_init_from_coo(csr_matrix_t *csr, coo_matrix_t *coo)
     memset(rowcnt, 0, sizeof(int)*csr->n);
     for (int nz = 0; nz < csr->nnz; nz++) {
         coo_matrix_tuple_t *tuple = &coo->nonzeros[nz];
-        // bsg_pr_dbg("%s: copying nz %d: row %d, col %d, val %f\n"
-        //            , __func__
-        //            , nz
-        //            , tuple->row
-        //            , tuple->col
-        //            , tuple->val);
-        // bsg_pr_dbg("%s: copying nz %d: rowptrs[%d] = %d, rowcnt[%d] = %d\n"
-        //            , __func__
-        //            , nz
-        //            , tuple->row
-        //            , rowptrs[tuple->row]
-        //            , tuple->row
-        //            , rowcnt[tuple->row]);
+        bsg_pr_dbg("%s: copying nz %d: row %d, col %d, val %f\n"
+                   , __func__
+                   , nz
+                   , tuple->row
+                   , tuple->col
+                   , tuple->val);
+        bsg_pr_dbg("%s: copying nz %d: rowptrs[%d] = %d, rowcnt[%d] = %d\n"
+                   , __func__
+                   , nz
+                   , tuple->row
+                   , rowptrs[tuple->row]
+                   , tuple->row
+                   , rowcnt[tuple->row]);
         
         tuples[rowptrs[tuple->row]+rowcnt[tuple->row]].col = tuple->col;
         tuples[rowptrs[tuple->row]+rowcnt[tuple->row]].val = tuple->val;

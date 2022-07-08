@@ -1,7 +1,14 @@
-#pragma once
 #include "tuple_vec.h"
+#include "appl.hpp"
 
 list_t tuple_vec_free [TUPLE_VEC_FREE_N];
+
+void tuple_vec_libinit()
+{
+    for (int i = 0; i < TUPLE_VEC_FREE_N; i++) {
+        list_init(&tuple_vec_free[i]);
+    }
+}
 
 /**
  * allocate a new buffer of partials large enough to fit 'size'
@@ -24,7 +31,9 @@ tuple_t *tuple_new(int size)
         alloc_size += sizeof(tuple_vec_t);
         
         // allocate
-        tv = (tuple_vec_t*)appl::malloc(alloc_size);
+        tv = (tuple_vec_t*)appl::appl_malloc(alloc_size);
+        // bsg_print_int(7000000 + size);
+        // bsg_print_hexadecimal((unsigned)tv);
 
         tv->size = tuple_vec_bucket_to_size(bkt);
         tv->free.next = nullptr;

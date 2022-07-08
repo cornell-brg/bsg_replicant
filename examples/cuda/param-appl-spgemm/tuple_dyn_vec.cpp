@@ -1,3 +1,4 @@
+#include "bsg_manycore.h"
 #include "tuple_dyn_vec.h"
 
 template <int UNROLL>
@@ -44,6 +45,13 @@ void tuple_dyn_vec_merge(
     tuple_dyn_vec_t merged;
     tuple_dyn_vec_init(&merged, first->size + second->size);
 
+    // bsg_print_hexadecimal((unsigned)first->v);
+    // bsg_print_int(6000000 + first->size);
+    // bsg_print_hexadecimal((unsigned)second->v);
+    // bsg_print_int(6000000 + second->size);
+    // bsg_print_hexadecimal((unsigned)merged.v);
+    // bsg_print_int(6000000 + merged.size);
+    
     int n0 = first->size, n1 = second->size;
     int i0 = 0, i1 = 0, im = 0;
     int x0, x1, x0_n, x1_n;

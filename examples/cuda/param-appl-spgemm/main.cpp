@@ -7,7 +7,9 @@
 #include "eigen_sparse_matrix.hpp"
 #include "csr_matrix.h"
 #include "coo_matrix_mmio.h"
+#include "coo_matrix_csr.h"
 #include "dev_csr_matrix.h"
+#include "utils.h"
 
 hb_mc_device_t dev;
 
@@ -59,6 +61,35 @@ int dev_csr_matrix_init_empty(csr_matrix_t *csr, hb_mc_eva_t *csr_dev_ptr)
     return HB_MC_SUCCESS;
 }
 
+static
+int csr_matrix_update_from_dev(csr_matrix_t *csr, hb_mc_eva_t csr_dev_ptr)
+{
+    dev_csr_matrix_t _, *dev_csr = &_;
+
+    // read header
+    BSG_CUDA_CALL(hb_mc_device_memcpy_to_host(
+                      &dev
+                      ,dev_csr
+                      ,csr_dev_ptr
+                      ,sizeof(dev_csr_matrix_t)
+                      ));
+
+    csr->n   = dev_csr->n;
+    csr->nnz = dev_csr->nnz;
+    BSG_CUDA_CALL(try_malloc(sizeof(int)*csr->n, (void**)&csr->rowptrs));
+    BSG_CUDA_CALL(try_malloc(sizeof(csr_matrix_tuple_t)*csr->nnz, (void**)&csr->nonzeros));
+
+    // read nonzeros and row pointers
+    hb_mc_dma_dtoh_t dtoh [] = {
+        { dev_csr->rowptrs, csr->rowptrs, csr->n*sizeof(int)},
+        { dev_csr->nonzeros, csr->nonzeros, csr->nnz*sizeof(csr_matrix_tuple_t) }
+    };
+
+    BSG_CUDA_CALL(hb_mc_device_dma_to_host(&dev, dtoh, 2));
+
+    return HB_MC_SUCCESS;
+}
+
 int SpGEMMMain(int argc, char *argv[])
 {
     char *kernels = argv[1];
@@ -91,21 +122,42 @@ int SpGEMMMain(int argc, char *argv[])
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr.n * sizeof(int), &C_row_nnz));
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, csr.n * sizeof(hb_mc_eva_t), &C_tmp));
 
-    int kargc = 5;
-    hb_mc_eva_t kargv [] = {A_dev, B_dev, C_dev, C_row_nnz, C_tmp};
+    // allocate dram buffer
+    hb_mc_eva_t dram_buffer_dev;
+    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, 128*1024*1024, &dram_buffer_dev));
+    
+    int kargc = 6;
+    hb_mc_eva_t kargv [] = {A_dev, B_dev, C_dev, C_row_nnz, C_tmp, dram_buffer_dev};
     hb_mc_dimension_t gd = {1 , 1};
     hb_mc_dimension_t tg = {bsg_tiles_X , bsg_tiles_Y};
-    printf("Launching spgemm kernel\n");
+    printf("launching spgemm kernel\n");
     BSG_CUDA_CALL(hb_mc_kernel_enqueue(&dev, gd, tg, "spgemm", kargc, kargv));
     BSG_CUDA_CALL(hb_mc_device_tile_groups_execute(&dev));
+    printf("spgemm kernel complete!\n");
+    
+    // get results
+    csr_matrix_dest(&csr);
+    BSG_CUDA_CALL(csr_matrix_update_from_dev(&csr, C_dev));
 
-    // check the result
-    //eigen_sparse_matrix_t matrix = eigen_sparse_matrix_from_coo(&coo);
+    // check the result with eigen
+    eigen_sparse_matrix_t eigen_input  = eigen_sparse_matrix_from_coo(&coo);
+    eigen_sparse_matrix_t eigen_output = eigen_sparse_matrix_t(eigen_input * eigen_input);
+
+    coo_matrix_dest(&coo);
+    coo_matrix_init_from_csr(&coo, &csr);
+    eigen_sparse_matrix_t device_output = eigen_sparse_matrix_from_coo(&coo);
+
+    // compare eigen vs device
+    int r = HB_MC_SUCCESS;
+    if (!eigen_sparse_matrices_are_equal(eigen_output, device_output)) {
+        r = HB_MC_FAIL;
+    }
+    
     BSG_CUDA_CALL(hb_mc_device_program_finish(&dev));
     BSG_CUDA_CALL(hb_mc_device_finish(&dev));
     coo_matrix_dest(&coo);
     csr_matrix_dest(&csr);
     
-    return HB_MC_SUCCESS;
+    return r;
 }
 declare_program_main("APPL Parameterized SpGEMM", SpGEMMMain);
