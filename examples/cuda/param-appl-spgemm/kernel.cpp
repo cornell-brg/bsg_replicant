@@ -20,7 +20,11 @@ static int floor_log2(int x)
 
 static int ceil_log2(int x)
 {
-    return floor_log2(x+1);
+    int j = 0;
+    while  ((1 << j) <= x) {
+        j = j+1;
+    }
+    return j;
 }
 
 static int tree_rchild(int root)
@@ -218,8 +222,8 @@ extern "C" void spgemm(
                     ,C_row_nnz
                     ,C_tmp
                     ,Ci
-                    ,Ci_nnz
                     ,Ci_off
+                    ,Ci_nnz
                     );
             });
         

@@ -1,4 +1,3 @@
-#define DEBUG
 #include <algorithm>
 #include <cstring>
 #include "bsg_manycore_cuda.h"

@@ -66,7 +66,7 @@ vpath %.c   $(APP_PATH)
 vpath %.cpp $(APP_PATH)
 
 # TEST_SOURCES is a list of source files that need to be compiled
-TEST_SOURCES = main.cpp mmio.c coo_matrix_mmio.cpp csr_matrix.cpp
+TEST_SOURCES = main.cpp mmio.c coo_matrix_mmio.cpp csr_matrix.cpp coo_matrix_csr.c
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
 DEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)

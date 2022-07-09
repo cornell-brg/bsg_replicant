@@ -11,6 +11,8 @@ typedef Eigen::Triplet<float> eigen_sparse_triplet_t;
 
 static inline eigen_sparse_matrix_t eigen_sparse_matrix_from_coo(coo_matrix_t *coo) {
     eigen_sparse_matrix_t matrix (coo->n, coo->n);
+    printf("%s: coo->nonzeros = %p\n", __func__, coo->nonzeros);
+    printf("%s: coo->n = $d\n", __func__, coo->n);
     std::vector<eigen_sparse_triplet_t> triplets;
     for (int nz = 0; nz < coo->nz; nz++) {
         coo_matrix_tuple_t *tuple = &coo->nonzeros[nz];
@@ -100,6 +102,8 @@ inline bool eigen_sparse_matrices_are_equal(
     eigen_sparse_matrix_t  & A
     ,eigen_sparse_matrix_t & B
     ) {
-    return eigen_sparse_matrix::mjr_range_equal(A, B, 0, A.rows());
+    return A.rows() == B.rows()
+        && A.cols() == B.cols()
+        && eigen_sparse_matrix::mjr_range_equal(A, B, 0, A.rows());
 }
 
