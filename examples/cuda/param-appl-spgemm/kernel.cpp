@@ -7,6 +7,13 @@
 #include "appl.hpp"
 #include "tuple_dyn_vec.h"
 
+#ifdef  DEBUG_SPGEMM
+#define bsg_print_int_dbg(x)                    \
+    bsg_print_int(x)
+#else
+#define bsg_print_int_dbg(x)
+#endif
+
 static int floor_log2(int x)
 {
     int i = -1;
@@ -130,13 +137,13 @@ static void scalar_row_product(
 
     // stall on off
     csr_matrix_tuple_t *nonzeros = &B->nonzeros[Bi_off];
-    bsg_print_int(4000000+Bi_nnz);
+    bsg_print_int_dbg(4000000+Bi_nnz);
     for (int nz = 0; nz < Bi_nnz; nz++) {
         float Bij, Cij;
         int   Bj;
         Bij = nonzeros[nz].val;
         Bj  = nonzeros[nz].col;
-        bsg_print_int(5000000+Bj);        
+        bsg_print_int_dbg(5000000+Bj);
         Cij = Aij * Bij;
         Bv.v[nz].col =  Bj;
         Bv.v[nz].val = Cij;
@@ -166,12 +173,12 @@ static void solve_row(
 
     tuple_dyn_vec_t Cv;
     tuple_dyn_vec_init(&Cv, 0);
-    bsg_print_int(2000000 + nnz);
+    bsg_print_int_dbg(2000000 + nnz);
     // for each nonzero entry in row A[i:]
     for (int nz = 0; nz < nnz; nz++) {        
         int Bi    = nonzeros[nz].col;
         float Aij = nonzeros[nz].val;
-        bsg_print_int(3000000 + Bi);
+        bsg_print_int_dbg(3000000 + Bi);
         scalar_row_product(
              A
             ,B
@@ -210,7 +217,7 @@ extern "C" void spgemm(
     if (__bsg_id == 0) {
         // 1. solve for each row
         appl::parallel_for(0, A->n, [=](int Ci){
-                bsg_print_int(1000000 + Ci);
+                bsg_print_int_dbg(1000000 + Ci);
                 // fetch A_i row data
                 int Ci_off = A->rowptrs[Ci];
                 int Ci_nnz = A->rowptrs[Ci+1] - Ci_off;
