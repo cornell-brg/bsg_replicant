@@ -1,7 +1,9 @@
 #include <stdint.h>
+#include <math.h>
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
+const float L = 1, W = 1, dt = 1e-3, alpha = 0.25, V = 50, epsilon = 1e-1, grav = 0.04; //grav should be 100/N
 float *x, *y, *u, *v, *force_x, *force_y, *mass;
 
 /*
@@ -143,10 +145,10 @@ float calculate_mass(struct node_t *node)
     {
         int mass1, mass2, mass3, mass4;
         appl::parallel_invoke(
-            [&mass1, &node] { mass1 = calculate_mass(&node->children[0]); },
-            [&mass2, &node] { mass2 = calculate_mass(&node->children[1]); },
-            [&mass3, &node] { mass3 = calculate_mass(&node->children[2]); },
-            [&mass4, &node] { mass4 = calculate_mass(&node->children[3]); } );
+            [&mass1, node] { mass1 = calculate_mass(&node->children[0]); },
+            [&mass2, node] { mass2 = calculate_mass(&node->children[1]); },
+            [&mass3, node] { mass3 = calculate_mass(&node->children[2]); },
+            [&mass4, node] { mass4 = calculate_mass(&node->children[3]); } );
 
         node->total_mass = (mass1 + mass2 + mass3 + mass4);
     }
@@ -189,10 +191,10 @@ float calculate_center_of_mass_x(struct node_t *node)
         float tmp_m3   = 0;
         float tmp_m4   = 0;
         appl::parallel_invoke(
-            [&tmp_c_x1, &tmp_m1, &node] { center_of_mass_x_helper(&node->children[0], tmp_c_x1, tmp_m1); },
-            [&tmp_c_x2, &tmp_m2, &node] { center_of_mass_x_helper(&node->children[1], tmp_c_x2, tmp_m2); },
-            [&tmp_c_x3, &tmp_m3, &node] { center_of_mass_x_helper(&node->children[2], tmp_c_x3, tmp_m3); },
-            [&tmp_c_x4, &tmp_m4, &node] { center_of_mass_x_helper(&node->children[3], tmp_c_x4, tmp_m4); } );
+            [&tmp_c_x1, &tmp_m1, node] { center_of_mass_x_helper(&node->children[0], tmp_c_x1, tmp_m1); },
+            [&tmp_c_x2, &tmp_m2, node] { center_of_mass_x_helper(&node->children[1], tmp_c_x2, tmp_m2); },
+            [&tmp_c_x3, &tmp_m3, node] { center_of_mass_x_helper(&node->children[2], tmp_c_x3, tmp_m3); },
+            [&tmp_c_x4, &tmp_m4, node] { center_of_mass_x_helper(&node->children[3], tmp_c_x4, tmp_m4); } );
         node->c_x = (tmp_c_x1 + tmp_c_x2 + tmp_c_x3 + tmp_c_x4);
         node->c_x /= (tmp_m1 + tmp_m2 + tmp_m3 + tmp_m4);
     }
@@ -221,14 +223,105 @@ float calculate_center_of_mass_y(struct node_t *node)
         float tmp_m3   = 0;
         float tmp_m4   = 0;
         appl::parallel_invoke(
-            [&tmp_c_y1, &tmp_m1, &node] { center_of_mass_y_helper(&node->children[0], tmp_c_y1, tmp_m1); },
-            [&tmp_c_y2, &tmp_m2, &node] { center_of_mass_y_helper(&node->children[1], tmp_c_y2, tmp_m2); },
-            [&tmp_c_y3, &tmp_m3, &node] { center_of_mass_y_helper(&node->children[2], tmp_c_y3, tmp_m3); },
-            [&tmp_c_y4, &tmp_m4, &node] { center_of_mass_y_helper(&node->children[3], tmp_c_y4, tmp_m4); } );
+            [&tmp_c_y1, &tmp_m1, node] { center_of_mass_y_helper(&node->children[0], tmp_c_y1, tmp_m1); },
+            [&tmp_c_y2, &tmp_m2, node] { center_of_mass_y_helper(&node->children[1], tmp_c_y2, tmp_m2); },
+            [&tmp_c_y3, &tmp_m3, node] { center_of_mass_y_helper(&node->children[2], tmp_c_y3, tmp_m3); },
+            [&tmp_c_y4, &tmp_m4, node] { center_of_mass_y_helper(&node->children[3], tmp_c_y4, tmp_m4); } );
         node->c_y = (tmp_c_y1 + tmp_c_y2 + tmp_c_y3 + tmp_c_y4);
         node->c_y /= (tmp_m1 + tmp_m2 + tmp_m3 + tmp_m4);
     }
     return node->c_y;
+}
+
+/*
+ * Calculates the forces in a time step of all particles in
+ * the simulation using the Barnes Hut quad tree.
+ */
+void update_forces(int N, struct node_t* root)
+{
+    appl::parallel_for(0, N, [root](int i) {
+          force_x[i] = 0;
+          force_y[i] = 0;
+          update_forces_help(i, root);
+        } );
+}
+
+/*
+ * Help function for calculating the forces recursively
+ * using the Barnes Hut quad tree.
+ */
+void update_forces_help(int particle, struct node_t *node)
+{
+    //The node is a leaf node with a particle and not the particle itself
+    if (!node->has_children && node->has_particle && node->particle != particle)
+    {
+        float r = sqrt((x[particle] - node->c_x) * (x[particle] - node->c_x) + (y[particle] - node->c_y) * (y[particle] - node->c_y));
+        calculate_force(particle, node, r);
+    }
+    //The node has children
+    else if (node->has_children)
+    {
+        //Calculate r and theta
+        float r = sqrt((x[particle] - node->c_x) * (x[particle] - node->c_x) + (y[particle] - node->c_y) * (y[particle] - node->c_y));
+        float theta = (node->max_x - node->min_x) / r;
+
+        /* If the distance to the node's centre of mass is far enough, calculate the force,
+     * otherwise traverse further down the tree
+     */
+        if (theta < 0.5)
+        {
+            calculate_force(particle, node, r);
+        }
+        else
+        {
+            appl::parallel_invoke(
+                [particle, node] { update_forces_help(particle, &node->children[0]); },
+                [particle, node] { update_forces_help(particle, &node->children[1]); },
+                [particle, node] { update_forces_help(particle, &node->children[2]); },
+                [particle, node] { update_forces_help(particle, &node->children[3]); } );
+        }
+    }
+}
+
+/*
+ * Calculates and updates the force of a particle from a node.
+ */
+void calculate_force(int particle, struct node_t *node, float r)
+{
+    float temp = -grav * mass[particle] * node->total_mass / ((r + epsilon) * (r + epsilon) * (r + epsilon));
+    force_x[particle] += (x[particle] - node->c_x) * temp;
+    force_y[particle] += (y[particle] - node->c_y) * temp;
+}
+
+/*
+ * If a particle moves beyond any of the boundaries then bounce it back
+ */
+void bounce(float *x, float *y, float *u, float *v)
+{
+    float W = 1.0f, H = 1.0f;
+    if (*x > W)
+    {
+        *x = 2 * W - *x;
+        *u = -*u;
+    }
+
+    if (*x < 0)
+    {
+        *x = -*x;
+        *u = -*u;
+    }
+
+    if (*y > H)
+    {
+        *y = 2 * H - *y;
+        *v = -*v;
+    }
+
+    if (*y < 0)
+    {
+        *y = -*y;
+        *v = -*v;
+    }
 }
 
 struct node_t* construct_tree(int N) {
@@ -280,8 +373,28 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
   if (__bsg_id == 0) {
     //Calculate mass and center of mass
     calculate_mass(root);
-    // calculate_center_of_mass_x(root);
-    // calculate_center_of_mass_y(root);
+    calculate_center_of_mass_x(root);
+    calculate_center_of_mass_y(root);
+
+    //Calculate forces
+    update_forces(N, root);
+
+    //Update velocities and positions
+    appl::parallel_for(0, N, [](int i) {
+        float ax = force_x[i] / mass[i];
+        float ay = force_y[i] / mass[i];
+        u[i] += ax * dt;
+        v[i] += ay * dt;
+        x[i] += u[i] * dt;
+        y[i] += v[i] * dt;
+
+        /* This of course doesn't make any sense physically,
+     * but makes sure that the particles stay within the
+     * bounds. Normally the particles won't leave the
+     * area anyway.
+     */
+        bounce(&x[i], &y[i], &u[i], &v[i]);
+      } );
   } else {
     appl::worker_thread_init();
   }
