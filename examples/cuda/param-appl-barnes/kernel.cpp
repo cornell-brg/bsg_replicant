@@ -125,6 +125,112 @@ void place_particle(int particle, struct node_t *node)
     }
 }
 
+/*
+ * Calculates the total mass for the node. It recursively updates the mass
+ * of itself and all of its children.
+ */
+float calculate_mass(struct node_t *node)
+{
+    if (!node->has_particle)
+    {
+        node->total_mass = 0;
+    }
+    else if (!node->has_children)
+    {
+        node->total_mass = mass[node->particle];
+    }
+    else
+    {
+        int mass1, mass2, mass3, mass4;
+        appl::parallel_invoke(
+            [&mass1, &node] { mass1 = calculate_mass(&node->children[0]); },
+            [&mass2, &node] { mass2 = calculate_mass(&node->children[1]); },
+            [&mass3, &node] { mass3 = calculate_mass(&node->children[2]); },
+            [&mass4, &node] { mass4 = calculate_mass(&node->children[3]); } );
+
+        node->total_mass = (mass1 + mass2 + mass3 + mass4);
+    }
+    return node->total_mass;
+}
+
+void center_of_mass_x_helper(struct node_t *node, float& c_x, float& m_tot) {
+  if (node->has_particle) {
+    c_x = node->total_mass * calculate_center_of_mass_x(node);
+    m_tot = node->total_mass;
+  }
+}
+
+void center_of_mass_y_helper(struct node_t *node, float& c_y, float& m_tot) {
+  if (node->has_particle) {
+    c_y = node->total_mass * calculate_center_of_mass_y(node);
+    m_tot = node->total_mass;
+  }
+}
+
+/*
+ * Calculates the x-position of the centre of mass for the
+ * node. It recursively updates the position of itself and
+ * all of its children.
+ */
+float calculate_center_of_mass_x(struct node_t *node)
+{
+    if (!node->has_children)
+    {
+        node->c_x = x[node->particle];
+    }
+    else
+    {
+        float tmp_c_x1 = 0;
+        float tmp_c_x2 = 0;
+        float tmp_c_x3 = 0;
+        float tmp_c_x4 = 0;
+        float tmp_m1   = 0;
+        float tmp_m2   = 0;
+        float tmp_m3   = 0;
+        float tmp_m4   = 0;
+        appl::parallel_invoke(
+            [&tmp_c_x1, &tmp_m1, &node] { center_of_mass_x_helper(&node->children[0], tmp_c_x1, tmp_m1); },
+            [&tmp_c_x2, &tmp_m2, &node] { center_of_mass_x_helper(&node->children[1], tmp_c_x2, tmp_m2); },
+            [&tmp_c_x3, &tmp_m3, &node] { center_of_mass_x_helper(&node->children[2], tmp_c_x3, tmp_m3); },
+            [&tmp_c_x4, &tmp_m4, &node] { center_of_mass_x_helper(&node->children[3], tmp_c_x4, tmp_m4); } );
+        node->c_x = (tmp_c_x1 + tmp_c_x2 + tmp_c_x3 + tmp_c_x4);
+        node->c_x /= (tmp_m1 + tmp_m2 + tmp_m3 + tmp_m4);
+    }
+    return node->c_x;
+}
+
+/*
+ * Calculates the y-position of the centre of mass for the
+ * node. It recursively updates the position of itself and
+ * all of its children.
+ */
+float calculate_center_of_mass_y(struct node_t *node)
+{
+    if (!node->has_children)
+    {
+        node->c_y = y[node->particle];
+    }
+    else
+    {
+        float tmp_c_y1 = 0;
+        float tmp_c_y2 = 0;
+        float tmp_c_y3 = 0;
+        float tmp_c_y4 = 0;
+        float tmp_m1   = 0;
+        float tmp_m2   = 0;
+        float tmp_m3   = 0;
+        float tmp_m4   = 0;
+        appl::parallel_invoke(
+            [&tmp_c_y1, &tmp_m1, &node] { center_of_mass_y_helper(&node->children[0], tmp_c_y1, tmp_m1); },
+            [&tmp_c_y2, &tmp_m2, &node] { center_of_mass_y_helper(&node->children[1], tmp_c_y2, tmp_m2); },
+            [&tmp_c_y3, &tmp_m3, &node] { center_of_mass_y_helper(&node->children[2], tmp_c_y3, tmp_m3); },
+            [&tmp_c_y4, &tmp_m4, &node] { center_of_mass_y_helper(&node->children[3], tmp_c_y4, tmp_m4); } );
+        node->c_y = (tmp_c_y1 + tmp_c_y2 + tmp_c_y3 + tmp_c_y4);
+        node->c_y /= (tmp_m1 + tmp_m2 + tmp_m3 + tmp_m4);
+    }
+    return node->c_y;
+}
+
 struct node_t* construct_tree(int N) {
   struct node_t* root = (struct node_t*)appl::appl_malloc(sizeof(struct node_t));
   set_node(root);
@@ -161,13 +267,25 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
 
   // sync
   appl::sync();
+
+  // construct the quadtree
+  struct node_t* root;
+  if (__bsg_id == 0) {
+    root = construct_tree(N);
+  }
+
+  appl::sync();
   bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
-    struct node_t* root = construct_tree(N);
+    //Calculate mass and center of mass
+    calculate_mass(root);
+    // calculate_center_of_mass_x(root);
+    // calculate_center_of_mass_y(root);
   } else {
-    // appl::worker_thread_init();
+    appl::worker_thread_init();
   }
+
   appl::runtime_end();
   // --------------------- end of kernel -----------------
 
