@@ -26,6 +26,8 @@ eva_t device_x;
 eva_t device_y;
 eva_t device_u;
 eva_t device_v;
+eva_t device_force_x;
+eva_t device_force_y;
 
 /*
  * Struct that represents a node of the Barnes Hut quad tree.
@@ -489,9 +491,7 @@ void hb_time_step(hb_mc_device_t *device) {
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_y));
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_u));
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_v));
-  eva_t device_force_x;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_force_x));
-  eva_t device_force_y;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_force_y));
   eva_t device_mass;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_mass));
@@ -607,63 +607,29 @@ int kernel_appl_barnes (int argc, char **argv) {
                 print_statistics(vu, vv, cx, cy);
 
                 // copy to host
-                float* h_x    = (float *)malloc(N * sizeof(float));
-                float* h_y    = (float *)malloc(N * sizeof(float));
-                float* h_u    = (float *)malloc(N * sizeof(float));
-                float* h_v    = (float *)malloc(N * sizeof(float));
+                float* h_force_x = (float *)malloc(N * sizeof(float));
+                float* h_force_y = (float *)malloc(N * sizeof(float));
                 hb_mc_dma_dtoh_t dtoh[] = {{
-                  .d_addr = device_x,
-                  .h_addr = h_x,
+                  .d_addr = device_force_x,
+                  .h_addr = h_force_x,
                   .size   = N * sizeof(float)
                 }, {
-                  .d_addr = device_y,
-                  .h_addr = h_y,
-                  .size   = N * sizeof(float)
-                }, {
-                  .d_addr = device_u,
-                  .h_addr = h_u,
-                  .size   = N * sizeof(float)
-                }, {
-                  .d_addr = device_v,
-                  .h_addr = h_v,
+                  .d_addr = device_force_y,
+                  .h_addr = h_force_y,
                   .size   = N * sizeof(float)
                 }};
-                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, dtoh, 4));
-
-                //Compute final statistics for HB
-                float h_vu = 0;
-                float h_vv = 0;
-                float h_sumx = 0;
-                float h_sumy = 0;
-                float h_total_mass = 0;
-
-                for (int i = 0; i < N; i++)
-                {
-                    h_sumx += mass[i] * h_x[i];
-                    h_sumy += mass[i] * h_y[i];
-                    h_vu += h_u[i];
-                    h_vv += h_v[i];
-                    h_total_mass += mass[i];
-                }
-
-                float h_cx = h_sumx / h_total_mass;
-                float h_cy = h_sumy / h_total_mass;
-
-                printf("On Device:\n");
-                print_statistics(h_vu, h_vv, h_cx, h_cy);
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, dtoh, 2));
 
                 /*****************************************************************************************************************
                  * verification
                  ******************************************************************************************************************/
                 double error = 0.0;
                 for (int i = 0; i < N; i++) {
-                  bsg_pr_info("particle %d with u = (%f, %f), v = (%f, %f), x = (%f, %f), y = (%f, %f)\n",
-                               i, h_u[i], u[i], h_v[i], v[i], h_x[i], x[i], h_y[i], y[i]);
-                  error += (fabs(h_u[i] - u[i]) / u[i]);
-                  error += (fabs(h_v[i] - v[i]) / v[i]);
-                  error += (fabs(h_x[i] - x[i]) / x[i]);
-                  error += (fabs(h_y[i] - y[i]) / y[i]);
-                  if (error > 0.001) {
+                  bsg_pr_info("particle %d with force_x = (%f, %f) and force_y = (%f, %f)\n", i, h_force_x[i], force_x[i],
+                              h_force_y[i], force_y[i]);
+                  error += (fabs(h_force_x[i] - force_x[i]));
+                  error += (fabs(h_force_y[i] - force_y[i]));
+                  if (error > 0.0001) {
                     return HB_MC_FAIL;
                   }
                 }

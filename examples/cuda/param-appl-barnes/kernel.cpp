@@ -289,6 +289,11 @@ void update_forces_help(int particle, struct node_t *node, float& fx, float& fy)
             fy = fy1 + fy2 + fy3 + fy4;
         }
     }
+    else
+    {
+      fx = 0;
+      fy = 0;
+    }
 }
 
 /*
@@ -299,37 +304,6 @@ void calculate_force(int particle, struct node_t *node, float r, float& fx, floa
     float temp = -grav * mass[particle] * node->total_mass / ((r + epsilon) * (r + epsilon) * (r + epsilon));
     fx = (x[particle] - node->c_x) * temp;
     fy = (y[particle] - node->c_y) * temp;
-}
-
-/*
- * If a particle moves beyond any of the boundaries then bounce it back
- */
-void bounce(float *x, float *y, float *u, float *v)
-{
-    float W = 1.0f, H = 1.0f;
-    if (*x > W)
-    {
-        *x = 2 * W - *x;
-        *u = -*u;
-    }
-
-    if (*x < 0)
-    {
-        *x = -*x;
-        *u = -*u;
-    }
-
-    if (*y > H)
-    {
-        *y = 2 * H - *y;
-        *v = -*v;
-    }
-
-    if (*y < 0)
-    {
-        *y = -*y;
-        *v = -*v;
-    }
 }
 
 struct node_t* construct_tree(int N) {
@@ -390,26 +364,6 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
     bsg_print_int(10089);
     //Calculate forces
     update_forces(N, root);
-
-    bsg_print_int(10090);
-    //Update velocities and positions
-    appl::parallel_for(0, N, [](int i) {
-        bsg_print_int(i);
-        float ax = force_x[i] / mass[i];
-        float ay = force_y[i] / mass[i];
-        u[i] += ax * dt;
-        v[i] += ay * dt;
-        x[i] += u[i] * dt;
-        y[i] += v[i] * dt;
-        bsg_print_int(i);
-
-        /* This of course doesn't make any sense physically,
-     * but makes sure that the particles stay within the
-     * bounds. Normally the particles won't leave the
-     * area anyway.
-     */
-        bounce(&x[i], &y[i], &u[i], &v[i]);
-      } );
   } else {
     appl::worker_thread_init();
   }
