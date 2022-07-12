@@ -10,6 +10,14 @@
 #define bsg_print_int_dbg(i)
 #endif
 
+#ifdef APPL_IMPL_CELLO
+#define sptrans_malloc(size)                    \
+    cello_malloc(size)
+#else
+#define sptrans_malloc(size)                    \
+    appl::appl_malloc(size)
+#endif
+
 extern "C" int sparse_transpose(
     csr_matrix_t *I,
     csr_matrix_t *O,
@@ -20,8 +28,8 @@ extern "C" int sparse_transpose(
     bsg_cuda_print_stat_kernel_start();
     
     if (__bsg_id == 0) {
-        int *O_nz_pos =  (int*)appl::appl_malloc(sizeof(int)*I->nnz);
-        int *O_nnz = (int*)appl::appl_malloc(sizeof(int)*(I->n+1));
+        int *O_nz_pos =  (int*)sptrans_malloc(sizeof(int)*I->nnz);
+        int *O_nnz = (int*)sptrans_malloc(sizeof(int)*(I->n+1));
         appl::parallel_for(0, I->n+1, [=](int i){
                 O_nnz[i] = 0;
             });

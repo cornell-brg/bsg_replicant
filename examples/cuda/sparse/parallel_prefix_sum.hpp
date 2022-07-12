@@ -2,6 +2,14 @@
 #include "bsg_manycore.h"
 #include "bsg_manycore_atomic.h"
 
+#ifdef APPL_IMPL_CELLO
+#define parallel_prefix_sum_malloc(size)        \
+    cello_malloc(size)
+#else
+#define parallel_prefix_sum_malloc(size)        \
+    appl::appl_malloc(size)
+#endif
+
 inline int floor_log2(int x)
 {
     int i = -1;
@@ -37,7 +45,7 @@ inline void parallel_prefix_sum(
     ,int *out
     ,int  n
     ) {
-    int *tree = (int*)appl::appl_malloc(sizeof(int)*2*appl::get_nthreads());
+    int *tree = (int*)parallel_prefix_sum_malloc(sizeof(int)*2*appl::get_nthreads());
 
     appl::parallel_for(0, (int)appl::get_nthreads(), 1, [=](int tid){
             // calculate range
