@@ -50,6 +50,7 @@ float calculate_center_of_mass_y(struct node_t *node);
 void update_forces();
 void update_forces_help(int particle, struct node_t *node);
 void calculate_force(int particle, struct node_t *node, float r);
+
 /*
  * Function to read a case
  */
@@ -134,6 +135,37 @@ void print_statistics(float ut, float vt, float xc, float xy)
 }
 
 /*
+ * If a particle moves beyond any of the boundaries then bounce it back
+ */
+void bounce(float *x, float *y, float *u, float *v)
+{
+    float W = 1.0f, H = 1.0f;
+    if (*x > W)
+    {
+        *x = 2 * W - *x;
+        *u = -*u;
+    }
+
+    if (*x < 0)
+    {
+        *x = -*x;
+        *u = -*u;
+    }
+
+    if (*y > H)
+    {
+        *y = 2 * H - *y;
+        *v = -*v;
+    }
+
+    if (*y < 0)
+    {
+        *y = -*y;
+        *v = -*v;
+    }
+}
+
+/*
  * Updates the positions of the particles of a time step.
  */
 void time_step(void)
@@ -181,37 +213,6 @@ void time_step(void)
     //Free memory
     free_node(root);
     free(root);
-}
-
-/*
- * If a particle moves beyond any of the boundaries then bounce it back
- */
-void bounce(float *x, float *y, float *u, float *v)
-{
-    float W = 1.0f, H = 1.0f;
-    if (*x > W)
-    {
-        *x = 2 * W - *x;
-        *u = -*u;
-    }
-
-    if (*x < 0)
-    {
-        *x = -*x;
-        *u = -*u;
-    }
-
-    if (*y > H)
-    {
-        *y = 2 * H - *y;
-        *v = -*v;
-    }
-
-    if (*y < 0)
-    {
-        *y = -*y;
-        *v = -*v;
-    }
 }
 
 /*
@@ -470,6 +471,87 @@ void calculate_force(int particle, struct node_t *node, float r)
     force_y[particle] += (y[particle] - node->c_y) * temp;
 }
 
+void hb_time_step(hb_mc_device_t *device) {
+  /*****************************************************************************************************************
+   * Allocate memory on the device.
+   ******************************************************************************************************************/
+  eva_t device_result;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
+  eva_t dram_buffer;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
+
+  eva_t device_x;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_x));
+  eva_t device_y;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_y));
+  eva_t device_u;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_u));
+  eva_t device_v;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_v));
+  eva_t device_force_x;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_force_x));
+  eva_t device_force_y;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_force_y));
+  eva_t device_mass;
+  BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_mass));
+
+  hb_mc_dma_htod_t htod[] = {{
+    .d_addr = device_x,
+    .h_addr = x,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_y,
+    .h_addr = y,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_u,
+    .h_addr = u,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_v,
+    .h_addr = v,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_force_x,
+    .h_addr = force_x,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_force_y,
+    .h_addr = force_y,
+    .size   = N * sizeof(float)
+  }, {
+    .d_addr = device_mass,
+    .h_addr = mass,
+    .size   = N * sizeof(float)
+  }};
+  BSG_CUDA_CALL(hb_mc_device_dma_to_device(device, htod, 7));
+
+  /*****************************************************************************************************************
+   * Define block_size_x/y: amount of work for each tile group
+   * Define tg_dim_x/y: number of tiles in each tile group
+   * Calculate grid_dim_x/y: number of tile groups needed based on block_size_x/y
+   ******************************************************************************************************************/
+  hb_mc_dimension_t tg_dim = { .x = bsg_tiles_X, .y = bsg_tiles_Y};
+  hb_mc_dimension_t grid_dim = { .x = 1, .y = 1};
+
+  /*****************************************************************************************************************
+   * Prepare list of input arguments for kernel.
+   ******************************************************************************************************************/
+  int cuda_argv[] = {device_result, device_x, device_y, device_u, device_v,
+                     device_force_x, device_force_y, device_mass, N, dram_buffer};
+
+  /*****************************************************************************************************************
+   * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
+   ******************************************************************************************************************/
+  BSG_CUDA_CALL(hb_mc_kernel_enqueue (device, grid_dim, tg_dim, "kernel_appl_barnes", 10, cuda_argv));
+
+  /*****************************************************************************************************************
+   * Launch and execute all tile groups on device and wait for all to finish.
+   ******************************************************************************************************************/
+  BSG_CUDA_CALL(hb_mc_device_tile_groups_execute(device));
+
+  return;
+}
 
 
 int kernel_appl_barnes (int argc, char **argv) {
@@ -506,7 +588,7 @@ int kernel_appl_barnes (int argc, char **argv) {
                   exit(1);
                 }
 
-                // hb_time_step();
+                hb_time_step(&device);
                 time_step();
 
                 //Compute final statistics
@@ -530,47 +612,13 @@ int kernel_appl_barnes (int argc, char **argv) {
 
                 print_statistics(vu, vv, cx, cy);
 
-                exit(1);
-
-                /*****************************************************************************************************************
-                 * Allocate memory on the device.
-                 ******************************************************************************************************************/
-
-                eva_t device_result;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, 64 * sizeof(uint32_t), &device_result)); // buffer for return results
-                eva_t dram_buffer;
-                BSG_CUDA_CALL(hb_mc_device_malloc(&device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
-
-                /*****************************************************************************************************************
-                 * Define block_size_x/y: amount of work for each tile group
-                 * Define tg_dim_x/y: number of tiles in each tile group
-                 * Calculate grid_dim_x/y: number of tile groups needed based on block_size_x/y
-                 ******************************************************************************************************************/
-                hb_mc_dimension_t tg_dim = { .x = bsg_tiles_X, .y = bsg_tiles_Y};
-                hb_mc_dimension_t grid_dim = { .x = 1, .y = 1};
-
-                /*****************************************************************************************************************
-                 * Prepare list of input arguments for kernel.
-                 ******************************************************************************************************************/
-                int cuda_argv[] = {device_result, N, dram_buffer};
-
-                /*****************************************************************************************************************
-                 * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
-                 ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_barnes", 4, cuda_argv));
-
-                /*****************************************************************************************************************
-                 * Launch and execute all tile groups on device and wait for all to finish.
-                 ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_device_tile_groups_execute(&device));
-
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                uint32_t host_result[64];
-                void *src = (void *) ((intptr_t) device_result);;
-                void *dst = (void *) &host_result[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                // uint32_t host_result[64];
+                // void *src = (void *) ((intptr_t) device_result);;
+                // void *dst = (void *) &host_result[0];
+                // BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
