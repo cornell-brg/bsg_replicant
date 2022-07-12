@@ -32,8 +32,8 @@ float calculate_center_of_mass_y(struct node_t *node);
 
 //Functions for the force calculations
 void update_forces();
-void update_forces_help(int particle, struct node_t *node);
-void calculate_force(int particle, struct node_t *node, float r);
+void update_forces_help(int particle, struct node_t *node, float& fx, float& fy);
+void calculate_force(int particle, struct node_t *node, float r, float& fx, float& fy);
 
 /*
  * Sets initial values for a new node
@@ -242,7 +242,11 @@ void update_forces(int N, struct node_t* root)
     appl::parallel_for(0, N, [root](int i) {
           force_x[i] = 0;
           force_y[i] = 0;
-          update_forces_help(i, root);
+          float fx = 0;
+          float fy = 0;
+          update_forces_help(i, root, fx, fy);
+          force_x[i] += fx;
+          force_y[i] += fy;
         } );
 }
 
@@ -250,13 +254,13 @@ void update_forces(int N, struct node_t* root)
  * Help function for calculating the forces recursively
  * using the Barnes Hut quad tree.
  */
-void update_forces_help(int particle, struct node_t *node)
+void update_forces_help(int particle, struct node_t *node, float& fx, float& fy)
 {
     //The node is a leaf node with a particle and not the particle itself
     if (!node->has_children && node->has_particle && node->particle != particle)
     {
         float r = sqrt((x[particle] - node->c_x) * (x[particle] - node->c_x) + (y[particle] - node->c_y) * (y[particle] - node->c_y));
-        calculate_force(particle, node, r);
+        calculate_force(particle, node, r, fx, fy);
     }
     //The node has children
     else if (node->has_children)
@@ -270,15 +274,19 @@ void update_forces_help(int particle, struct node_t *node)
      */
         if (theta < 0.5)
         {
-            calculate_force(particle, node, r);
+            calculate_force(particle, node, r, fx, fy);
         }
         else
         {
+            float fx1, fx2, fx3, fx4;
+            float fy1, fy2, fy3, fy4;
             appl::parallel_invoke(
-                [particle, node] { update_forces_help(particle, &node->children[0]); },
-                [particle, node] { update_forces_help(particle, &node->children[1]); },
-                [particle, node] { update_forces_help(particle, &node->children[2]); },
-                [particle, node] { update_forces_help(particle, &node->children[3]); } );
+                [particle, node, &fx1, &fy1] { update_forces_help(particle, &node->children[0], fx1, fy1); },
+                [particle, node, &fx2, &fy2] { update_forces_help(particle, &node->children[1], fx2, fy2); },
+                [particle, node, &fx3, &fy3] { update_forces_help(particle, &node->children[2], fx3, fy3); },
+                [particle, node, &fx4, &fy4] { update_forces_help(particle, &node->children[3], fx4, fy4); } );
+            fx = fx1 + fx2 + fx3 + fx4;
+            fy = fy1 + fy2 + fy3 + fy4;
         }
     }
 }
@@ -286,11 +294,11 @@ void update_forces_help(int particle, struct node_t *node)
 /*
  * Calculates and updates the force of a particle from a node.
  */
-void calculate_force(int particle, struct node_t *node, float r)
+void calculate_force(int particle, struct node_t *node, float r, float& fx, float& fy)
 {
     float temp = -grav * mass[particle] * node->total_mass / ((r + epsilon) * (r + epsilon) * (r + epsilon));
-    force_x[particle] += (x[particle] - node->c_x) * temp;
-    force_y[particle] += (y[particle] - node->c_y) * temp;
+    fx = (x[particle] - node->c_x) * temp;
+    fy = (y[particle] - node->c_y) * temp;
 }
 
 /*
@@ -371,22 +379,29 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
   bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
+    bsg_print_int(10086);
     //Calculate mass and center of mass
     calculate_mass(root);
+    bsg_print_int(10087);
     calculate_center_of_mass_x(root);
+    bsg_print_int(10088);
     calculate_center_of_mass_y(root);
 
+    bsg_print_int(10089);
     //Calculate forces
     update_forces(N, root);
 
+    bsg_print_int(10090);
     //Update velocities and positions
     appl::parallel_for(0, N, [](int i) {
+        bsg_print_int(i);
         float ax = force_x[i] / mass[i];
         float ay = force_y[i] / mass[i];
         u[i] += ax * dt;
         v[i] += ay * dt;
         x[i] += u[i] * dt;
         y[i] += v[i] * dt;
+        bsg_print_int(i);
 
         /* This of course doesn't make any sense physically,
      * but makes sure that the particles stay within the

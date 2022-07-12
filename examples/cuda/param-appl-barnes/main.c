@@ -22,6 +22,11 @@ const float L = 1, W = 1, dt = 1e-3, alpha = 0.25, V = 50, epsilon = 1e-1, grav 
 float *x, *y, *u, *v, *force_x, *force_y, *mass;
 struct node_t *root;
 
+eva_t device_x;
+eva_t device_y;
+eva_t device_u;
+eva_t device_v;
+
 /*
  * Struct that represents a node of the Barnes Hut quad tree.
  */
@@ -480,13 +485,9 @@ void hb_time_step(hb_mc_device_t *device) {
   eva_t dram_buffer;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, BUF_SIZE * sizeof(uint32_t), &dram_buffer));
 
-  eva_t device_x;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_x));
-  eva_t device_y;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_y));
-  eva_t device_u;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_u));
-  eva_t device_v;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_v));
   eva_t device_force_x;
   BSG_CUDA_CALL(hb_mc_device_malloc(device, N * sizeof(float), &device_force_x));
@@ -512,19 +513,11 @@ void hb_time_step(hb_mc_device_t *device) {
     .h_addr = v,
     .size   = N * sizeof(float)
   }, {
-    .d_addr = device_force_x,
-    .h_addr = force_x,
-    .size   = N * sizeof(float)
-  }, {
-    .d_addr = device_force_y,
-    .h_addr = force_y,
-    .size   = N * sizeof(float)
-  }, {
     .d_addr = device_mass,
     .h_addr = mass,
     .size   = N * sizeof(float)
   }};
-  BSG_CUDA_CALL(hb_mc_device_dma_to_device(device, htod, 7));
+  BSG_CUDA_CALL(hb_mc_device_dma_to_device(device, htod, 5));
 
   /*****************************************************************************************************************
    * Define block_size_x/y: amount of work for each tile group
@@ -610,15 +603,70 @@ int kernel_appl_barnes (int argc, char **argv) {
                 float cx = sumx / total_mass;
                 float cy = sumy / total_mass;
 
+                printf("On Host:\n");
                 print_statistics(vu, vv, cx, cy);
 
+                // copy to host
+                float* h_x    = (float *)malloc(N * sizeof(float));
+                float* h_y    = (float *)malloc(N * sizeof(float));
+                float* h_u    = (float *)malloc(N * sizeof(float));
+                float* h_v    = (float *)malloc(N * sizeof(float));
+                hb_mc_dma_dtoh_t dtoh[] = {{
+                  .d_addr = device_x,
+                  .h_addr = h_x,
+                  .size   = N * sizeof(float)
+                }, {
+                  .d_addr = device_y,
+                  .h_addr = h_y,
+                  .size   = N * sizeof(float)
+                }, {
+                  .d_addr = device_u,
+                  .h_addr = h_u,
+                  .size   = N * sizeof(float)
+                }, {
+                  .d_addr = device_v,
+                  .h_addr = h_v,
+                  .size   = N * sizeof(float)
+                }};
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, dtoh, 4));
+
+                //Compute final statistics for HB
+                float h_vu = 0;
+                float h_vv = 0;
+                float h_sumx = 0;
+                float h_sumy = 0;
+                float h_total_mass = 0;
+
+                for (int i = 0; i < N; i++)
+                {
+                    h_sumx += mass[i] * h_x[i];
+                    h_sumy += mass[i] * h_y[i];
+                    h_vu += h_u[i];
+                    h_vv += h_v[i];
+                    h_total_mass += mass[i];
+                }
+
+                float h_cx = h_sumx / h_total_mass;
+                float h_cy = h_sumy / h_total_mass;
+
+                printf("On Device:\n");
+                print_statistics(h_vu, h_vv, h_cx, h_cy);
+
                 /*****************************************************************************************************************
-                 * Copy result back from device DRAM into host memory.
+                 * verification
                  ******************************************************************************************************************/
-                // uint32_t host_result[64];
-                // void *src = (void *) ((intptr_t) device_result);;
-                // void *dst = (void *) &host_result[0];
-                // BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
+                double error = 0.0;
+                for (int i = 0; i < N; i++) {
+                  bsg_pr_info("particle %d with u = (%f, %f), v = (%f, %f), x = (%f, %f), y = (%f, %f)\n",
+                               i, h_u[i], u[i], h_v[i], v[i], h_x[i], x[i], h_y[i], y[i]);
+                  error += (fabs(h_u[i] - u[i]) / u[i]);
+                  error += (fabs(h_v[i] - v[i]) / v[i]);
+                  error += (fabs(h_x[i] - x[i]) / x[i]);
+                  error += (fabs(h_y[i] - y[i]) / y[i]);
+                  if (error > 0.001) {
+                    return HB_MC_FAIL;
+                  }
+                }
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
