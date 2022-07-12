@@ -83,7 +83,7 @@ extern "C" int sparse_transpose(
                           });
             });
     } else {
-        appl::worker_thread_init();        
+        appl::worker_thread_init();
     }    
     appl::runtime_end();    
     bsg_cuda_print_stat_kernel_end();
