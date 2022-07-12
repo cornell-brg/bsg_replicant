@@ -45,18 +45,17 @@ int dev_csr_matrix_init_empty(const csr_matrix_t *csr, hb_mc_eva_t *csr_dev_ptr)
     dev_csr_matrix_t _, *dev_csr = &_;
     hb_mc_eva_t ptr;
 
-    dev_csr->n = csr->n;
+    dev_csr->n   = csr->n;
     dev_csr->nnz = csr->nnz;
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, (dev_csr->n+1)*sizeof(int), &dev_csr->rowptrs));
-    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, (dev_csr->nnz)*sizeof(int), &dev_csr->nonzeros));
+    BSG_CUDA_CALL(hb_mc_device_malloc(&dev, (dev_csr->nnz)*sizeof(csr_matrix_tuple_t), &dev_csr->nonzeros));
     BSG_CUDA_CALL(hb_mc_device_malloc(&dev, sizeof(dev_csr_matrix_t), &ptr));
 
     // copy nonzeros and rowptrs
     hb_mc_dma_htod_t htod [] = {
-        { dev_csr->rowptrs, csr->rowptrs, (dev_csr->n+1)*sizeof(int) },
         { ptr, dev_csr, sizeof(dev_csr_matrix_t) }
     };
-    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, htod, 2));
+    BSG_CUDA_CALL(hb_mc_device_dma_to_device(&dev, htod, 1));
 
     *csr_dev_ptr = ptr;
     return HB_MC_SUCCESS;
@@ -195,17 +194,18 @@ int SparseMatrixTransposeMain(int argc, char *argv[])
 
     // compare eigen vs device
     int r = HB_MC_SUCCESS;
+    printf("checking output against eigen\n");
     if (!eigen_sparse_matrices_are_equal(O_eigen, O_eigen_device)) {
         r = HB_MC_FAIL;
     }
-
+    printf("%s result\n", r == HB_MC_SUCCESS ? "correct" : "incorrect");
     BSG_CUDA_CALL(hb_mc_device_program_finish(&dev));
     BSG_CUDA_CALL(hb_mc_device_finish(&dev));
 
     csr_matrix_dest(&I_csr);
     coo_matrix_dest(&I_coo);
     csr_matrix_dest(&O_csr);
-    coo_matrix_dest(&o_coo);
+    coo_matrix_dest(&O_coo);
 
     return r;
 }

@@ -42,7 +42,8 @@ $(TESTS_DIRS): %: %/app_path.mk
 $(TESTS_DIRS): %: %/parameters.mk
 $(TESTS_DIRS): %: %/Makefile
 
-generate: $(TESTS_DIRS)
+include $(REPLICANT_PATH)/examples/cuda/sparse/eigen.mk
+generate: $(TESTS_DIRS) eigen
 
 $(addsuffix .profile,$(TESTS)): %.profile: %
 	$(MAKE) -C $< profile.log
