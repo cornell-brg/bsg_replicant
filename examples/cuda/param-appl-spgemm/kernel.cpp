@@ -128,6 +128,7 @@ extern "C" void spgemm(
 
     if (__bsg_id == 0) {
         // 1. solve for each row
+        bsg_print_hexadecimal(0x00000000);
         appl::parallel_for(0, A->n, [=](int Ci){
                 bsg_print_int_dbg(1000000 + Ci);
                 // fetch A_i row data
@@ -147,9 +148,11 @@ extern "C" void spgemm(
             });
         
         // 2. scan
+        bsg_print_hexadecimal(0x11111111);
         parallel_prefix_sum(C_row_nnz, C->rowptrs, C->n);
         
         // 3. copy
+        bsg_print_hexadecimal(0x22222222);
         csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)spgemm_malloc(
             sizeof(csr_matrix_tuple_t) * C->nnz
             );
@@ -164,7 +167,8 @@ extern "C" void spgemm(
                 for (int nz = 0; nz < Ci_nnz; nz++) {
                     dst[nz] = src[nz];
                 }
-            });        
+            });
+        bsg_print_hexadecimal(0x33333333);
     } else {
         appl::worker_thread_init();
     }
