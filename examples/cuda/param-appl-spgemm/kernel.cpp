@@ -15,6 +15,14 @@
 #define bsg_print_int_dbg(x)
 #endif
 
+#ifdef APPL_IMPL_CELLO
+#define spgemm_malloc(size)                     \
+    cello_malloc(size)
+#else
+#define spgemm_malloc(size)                     \
+    appl::appl_malloc(size)
+#endif
+
 /**
  * perform Aik * B[k;] and update C[i;]
  */
@@ -142,7 +150,7 @@ extern "C" void spgemm(
         parallel_prefix_sum(C_row_nnz, C->rowptrs, C->n);
         
         // 3. copy
-        csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)appl::appl_malloc(
+        csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)spgemm_malloc(
             sizeof(csr_matrix_tuple_t) * C->nnz
             );
         C->nonzeros = C_nonzeros;
