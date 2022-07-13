@@ -149,7 +149,7 @@ extern "C" void spgemm(
         
         // 2. scan
         bsg_print_hexadecimal(0x11111111);
-        parallel_prefix_sum(C_row_nnz, C->rowptrs, C->n);
+        parallel_prefix_sum(C_row_nnz, C->rowptrs, C->n+1);
         
         // 3. copy
         bsg_print_hexadecimal(0x22222222);

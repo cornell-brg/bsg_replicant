@@ -49,9 +49,9 @@ inline void parallel_prefix_sum(
 
     appl::parallel_for(0, (int)appl::get_nthreads(), 1, [=](int tid){
             // calculate range
-            int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
+            int region_size = (n + (appl::get_nthreads()-1))/appl::get_nthreads();
             int start = tid * region_size;
-            int end   = std::min(start + region_size, n+1);
+            int end   = std::min(start + region_size, n);
 
             // calculate local sum
             int sum = 0;
@@ -80,9 +80,9 @@ inline void parallel_prefix_sum(
     
     appl::parallel_for(0, (int)appl::get_nthreads(), [=](int tid){
             // calculate range
-            int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
+            int region_size = (n + (appl::get_nthreads()-1))/appl::get_nthreads();
             int start = tid * region_size;
-            int end   = std::min(start + region_size, n+1);
+            int end   = std::min(start + region_size, n);
 
             // accumulate from sum tree
             int s = 0;

@@ -57,7 +57,7 @@ extern "C" int sparse_transpose(
         parallel_prefix_sum(
             O_nnz
             ,O->rowptrs
-            ,O->n
+            ,O->n+1
             );
         // transpose non-zeros
         bsg_print_hexadecimal(0xCCCCCCCC);
