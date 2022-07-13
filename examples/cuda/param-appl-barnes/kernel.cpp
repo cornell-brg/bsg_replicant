@@ -346,13 +346,16 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
   // construct the quadtree
   struct node_t* root;
   if (__bsg_id == 0) {
+    bsg_cuda_print_stat_start(1);
     root = construct_tree(N);
+    bsg_cuda_print_stat_end(1);
   }
 
   appl::sync();
   bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
+    bsg_cuda_print_stat_start(2);
     bsg_print_int(10086);
     //Calculate mass and center of mass
     calculate_mass(root);
@@ -360,10 +363,13 @@ int kernel_appl_barnes(int* results, float* _x, float* _y, float* _u, float* _v,
     calculate_center_of_mass_x(root);
     bsg_print_int(10088);
     calculate_center_of_mass_y(root);
+    bsg_cuda_print_stat_end(2);
 
+    bsg_cuda_print_stat_start(3);
     bsg_print_int(10089);
     //Calculate forces
     update_forces(N, root);
+    bsg_cuda_print_stat_end(3);
   } else {
     appl::worker_thread_init();
   }
