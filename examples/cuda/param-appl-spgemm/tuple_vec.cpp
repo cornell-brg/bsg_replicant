@@ -1,6 +1,14 @@
 #include "tuple_vec.h"
 #include "appl.hpp"
 
+#ifdef APPL_IMPL_CELLO
+#define tuple_vec_malloc(size)                  \
+    cello_malloc(size)
+#else
+#define tuple_vec_malloc(size)                  \
+    appl::appl_malloc(size)
+#endif
+
 list_t tuple_vec_free [TUPLE_VEC_FREE_N];
 
 void tuple_vec_libinit()
@@ -31,7 +39,7 @@ tuple_t *tuple_new(int size)
         alloc_size += sizeof(tuple_vec_t);
         
         // allocate
-        tv = (tuple_vec_t*)appl::appl_malloc(alloc_size);
+        tv = (tuple_vec_t*)tuple_vec_malloc(alloc_size);
         // bsg_print_int(7000000 + size);
         // bsg_print_hexadecimal((unsigned)tv);
 

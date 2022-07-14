@@ -5,8 +5,9 @@
 #include "bsg_cuda_lite_barrier.h"
 #include "csr_matrix.h"
 #include "appl.hpp"
+#include "parallel_prefix_sum.hpp"
 #include "tuple_dyn_vec.h"
-
+//#define DEBUG_SPGEMM
 #ifdef  DEBUG_SPGEMM
 #define bsg_print_int_dbg(x)                    \
     bsg_print_int(x)
@@ -14,102 +15,13 @@
 #define bsg_print_int_dbg(x)
 #endif
 
-static int floor_log2(int x)
-{
-    int i = -1;
-    int j = i+1;
-    while  ((1 << j) <= x) {
-        i = j;
-        j = j+1;
-    }
-    return i;
-}
-
-static int ceil_log2(int x)
-{
-    int j = 0;
-    while  ((1 << j) <= x) {
-        j = j+1;
-    }
-    return j;
-}
-
-static int tree_rchild(int root)
-{
-    return 2*root + 2;
-}
-
-static int tree_lchild(int root)
-{
-    return 2*root + 1;
-}
-
-static void parallel_scan(
-    int  *in
-    ,int *out
-    ,int  n
-    ) {
-    int *tree = (int*)appl::appl_malloc(sizeof(int)*2*appl::get_nthreads());
-
-    appl::parallel_for(0, (int)appl::get_nthreads(), 1, [=](int tid){
-            // calculate range
-            int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
-            int start = tid * region_size;
-            int end   = std::min(start + region_size, n+1);
-
-            // calculate local sum
-            int sum = 0;
-            for (int i = start; i < end; i++) {
-                out[i] = sum;
-                sum += in[i];
-            }
-
-            // update tree
-            int r = 0;
-            int m = appl::get_nthreads();
-            int L = ceil_log2(m);
-            for (int l = 0; l < L; l++) {
-                bsg_amoadd(&tree[r], sum);
-                m >>= 1;
-                if (m & tid) {
-                    r = tree_rchild(r);
-                } else {
-                    r = tree_lchild(r);
-                }
-            }
-            bsg_amoadd(&tree[r], sum);
-        });
-
-    // sync
-    
-    appl::parallel_for(0, (int)appl::get_nthreads(), [=](int tid){
-            // calculate range
-            int region_size = (n+appl::get_nthreads())/appl::get_nthreads();
-            int start = tid * region_size;
-            int end   = std::min(start + region_size, n+1);
-
-            // accumulate from sum tree
-            int s = 0;
-            int r = 0;
-            int m = appl::get_nthreads();
-            int L = ceil_log2(m);
-            
-            for (int l = 0; l < L; l++) {
-                m >>= 1;
-                if (tid & m) {
-                    s += tree[tree_lchild(r)];
-                    r = tree_rchild(r);
-                } else {
-                    r = tree_lchild(r);
-                }
-            }
-
-            // calculate local sum
-            for (int i = start; i < end; i++) {
-                bsg_amoadd(&out[i], s);
-            }
-        });
-}
+#ifdef APPL_IMPL_CELLO
+#define spgemm_malloc(size)                     \
+    cello_malloc(size)
+#else
+#define spgemm_malloc(size)                     \
+    appl::appl_malloc(size)
+#endif
 
 /**
  * perform Aik * B[k;] and update C[i;]
@@ -216,6 +128,7 @@ extern "C" void spgemm(
 
     if (__bsg_id == 0) {
         // 1. solve for each row
+        bsg_print_hexadecimal(0x00000000);
         appl::parallel_for(0, A->n, [=](int Ci){
                 bsg_print_int_dbg(1000000 + Ci);
                 // fetch A_i row data
@@ -235,10 +148,12 @@ extern "C" void spgemm(
             });
         
         // 2. scan
-        parallel_scan(C_row_nnz, C->rowptrs, C->n);
+        bsg_print_hexadecimal(0x11111111);
+        parallel_prefix_sum(C_row_nnz, C->rowptrs, C->n+1);
         
         // 3. copy
-        csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)appl::appl_malloc(
+        bsg_print_hexadecimal(0x22222222);
+        csr_matrix_tuple_t *C_nonzeros = (csr_matrix_tuple_t*)spgemm_malloc(
             sizeof(csr_matrix_tuple_t) * C->nnz
             );
         C->nonzeros = C_nonzeros;
@@ -252,7 +167,8 @@ extern "C" void spgemm(
                 for (int nz = 0; nz < Ci_nnz; nz++) {
                     dst[nz] = src[nz];
                 }
-            });        
+            });
+        bsg_print_hexadecimal(0x33333333);
     } else {
         appl::worker_thread_init();
     }
