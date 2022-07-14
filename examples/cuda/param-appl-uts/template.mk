@@ -65,7 +65,7 @@ vpath %.c   $(APP_PATH)
 vpath %.cpp $(APP_PATH)
 
 # TEST_SOURCES is a list of source files that need to be compiled
-TEST_SOURCES = main.c
+TEST_SOURCES = main.c brg_sha1.c
 
 DEFINES += -D_XOPEN_SOURCE=500 -D_BSD_SOURCE -D_DEFAULT_SOURCE
 CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)

@@ -1,6 +1,9 @@
 #include <stdint.h>
 #include "bsg_manycore.h"
 #include "appl.hpp"
+
+#define PLATFORM_BYTE_ORDER IS_LITTLE_ENDIAN
+
 #include "brg_sha1.h"
 
 extern "C" __attribute__ ((noinline))
@@ -29,8 +32,12 @@ int kernel_appl_uts(int* results, int n, int grain_size, int* dram_buffer) {
       bsg_print_int(mystate.state[i]);
     }
     bsg_print_int(14850);
-    bsg_print_int(rng_nextrand( mystate.state ));
-    bsg_print_int(rng_nextrand( mystate.state ));
+    int rand1 = (rng_nextrand( mystate.state ));
+    int rand2 = (rng_nextrand( mystate.state ));
+    bsg_print_int(rand1);
+    bsg_print_int(rand2);
+    results[0] = rand1;
+    results[1] = rand2;
   } else {
     appl::worker_thread_init();
   }

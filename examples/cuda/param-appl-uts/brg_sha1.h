@@ -32,8 +32,6 @@
  Issue Date: 01/08/2005
 */
 
-#define PLATFORM_BYTE_ORDER IS_LITTLE_ENDIAN
-
 #ifndef _SHA1_H
 #define _SHA1_H
 

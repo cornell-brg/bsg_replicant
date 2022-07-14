@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include <bsg_manycore_regression.h>
 
+#define PLATFORM_BYTE_ORDER IS_BIG_ENDIAN
+#include "brg_sha1.h"
+
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
@@ -86,6 +89,21 @@ int kernel_appl_uts (int argc, char **argv) {
                 void *dst = (void *) &host_result[0];
                 BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, 64 * sizeof(uint32_t), HB_MC_MEMCPY_TO_HOST));
 
+                struct state_t mystate;
+                for (int i = 0; i < 20; i++) {
+                  mystate.state[i] = i;
+                }
+                rng_init( mystate.state, 14850 );
+                for (int i = 0; i < 20; i++) {
+                  printf("state[%d] = %d\n", i, mystate.state[i]);
+                }
+                int rand1 = rng_nextrand( mystate.state );
+                int rand2 = rng_nextrand( mystate.state );
+                printf("rng_nextrand = %d\n", rand1);
+                printf("rng_nextrand = %d\n", rand2);
+                if (rand1 != host_result[0] || rand2 != host_result[1]) {
+                  return HB_MC_FAIL;
+                }
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
                  ******************************************************************************************************************/
