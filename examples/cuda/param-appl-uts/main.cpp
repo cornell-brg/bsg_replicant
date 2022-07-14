@@ -13,6 +13,7 @@
 
 #define PLATFORM_BYTE_ORDER IS_BIG_ENDIAN
 #include "brg_sha1.h"
+#include "uts-datasets.hpp"
 
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
@@ -30,8 +31,6 @@ int kernel_appl_uts (int argc, char **argv) {
         test_name = args.name;
 
         bsg_pr_test_info("Running the UTS Kernel on one %dx%d tile groups.\n\n", bsg_tiles_X, bsg_tiles_Y);
-
-        srand(time);
 
         /*****************************************************************************************************************
         * Define path to binary.
@@ -67,9 +66,17 @@ int kernel_appl_uts (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
+                Dataset* dataset_ptr = choose_dataset("test");
+                // debug print of the dataset
+                printf("Using Dataset %s:\n", dataset_ptr->str);
+                printf("\tq: %f\tm: %d\tr: %d\tt: %d\ta: %d\tb: %f\td: %d\tf: %f\tg: %d\n",
+                      dataset_ptr->nonLeafProb, dataset_ptr->nonLeafBF, dataset_ptr->rootId,
+                      dataset_ptr->t, dataset_ptr->a, dataset_ptr->b_0, dataset_ptr->gen_mx,
+                      dataset_ptr->shiftDepth, dataset_ptr->g);
+
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;
-                int cuda_argv[4] = {device_result, N, gsize, dram_buffer};
+                const uint32_t cuda_argv[4] = {device_result, N, gsize, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
