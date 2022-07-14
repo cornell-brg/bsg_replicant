@@ -10,10 +10,13 @@
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <bsg_manycore_regression.h>
+#include <iostream>
 
 #define PLATFORM_BYTE_ORDER IS_BIG_ENDIAN
 #include "brg_sha1.h"
 #include "uts-datasets.hpp"
+#include "uts-common.hpp"
+#include "uts-scalar.hpp"
 
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
@@ -69,10 +72,66 @@ int kernel_appl_uts (int argc, char **argv) {
                 Dataset* dataset_ptr = choose_dataset("test");
                 // debug print of the dataset
                 printf("Using Dataset %s:\n", dataset_ptr->str);
-                printf("\tq: %f\tm: %d\tr: %d\tt: %d\ta: %d\tb: %f\td: %d\tf: %f\tg: %d\n",
-                      dataset_ptr->nonLeafProb, dataset_ptr->nonLeafBF, dataset_ptr->rootId,
-                      dataset_ptr->t, dataset_ptr->a, dataset_ptr->b_0, dataset_ptr->gen_mx,
-                      dataset_ptr->shiftDepth, dataset_ptr->g);
+
+                int t, a, g;
+
+                nonLeafProb = dataset_ptr->nonLeafProb;
+                nonLeafBF   = dataset_ptr->nonLeafBF;
+                rootId      = dataset_ptr->rootId;
+                t           = dataset_ptr->t;
+                a           = dataset_ptr->a;
+                b_0         = dataset_ptr->b_0;
+                gen_mx      = dataset_ptr->gen_mx;
+                shiftDepth  = dataset_ptr->shiftDepth;
+                g           = dataset_ptr->g;
+
+                // Replace -1's with defaults
+
+                if ( nonLeafProb < 0 )
+                  nonLeafProb = 0.234375;
+                if ( nonLeafBF < 0 )
+                  nonLeafBF = 4;
+                if ( rootId < 0 )
+                  rootId = 0;
+                if ( t < 0 )
+                  t = 1;
+                if ( a < 0 )
+                  a = 0;
+                if ( b_0 < 0 )
+                  b_0 = 4.0;
+                if ( gen_mx < 0 )
+                  gen_mx = 6;
+                if ( shiftDepth < 0 )
+                  shiftDepth = 0.5;
+                if ( g < 0 )
+                  g = 1;
+
+                type               = (tree_t)t;
+                shape_fn           = (geoshape_t)a;
+                computeGranularity = std::max( 1, g );
+
+                std::cout << "Got args:" << std::endl;
+                std::cout << "nonLeafProb = " << nonLeafProb << std::endl;
+                std::cout << "nonLeafBF   = " << nonLeafBF << std::endl;
+                std::cout << "rootId      = " << rootId << std::endl;
+                std::cout << "t           = " << t << std::endl;
+                std::cout << "a           = " << a << std::endl;
+                std::cout << "b_0         = " << b_0 << std::endl;
+                std::cout << "gen_mx      = " << gen_mx << std::endl;
+                std::cout << "shiftDepth  = " << shiftDepth << std::endl;
+                std::cout << "g           = " << g << std::endl;
+
+                // execute locally
+                verify = true;
+                numNodes  = 0;
+                maxHeight = 0;
+                numLeaves = 0;
+
+                uts_scalar();
+
+                UTSResults scalar_result( "host scalar", numNodes, maxHeight, numLeaves );
+
+                verify_results( &scalar_result, dataset_ptr->str );
 
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;

@@ -6,8 +6,8 @@
 // __restrict__ keyword so that the compiler knows the arrays don't
 // overlap, and if we use pointer bumps as opposed to array indexing.
 
-#include "uts-scalar.h"
-#include "uts-common.h"
+#include "uts-scalar.hpp"
+#include "uts-common.hpp"
 
 #include <cmath>
 #include <cstring>
