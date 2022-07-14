@@ -97,7 +97,7 @@ include $(EXAMPLES_PATH)/link.mk
 # be built before executing.
 RISCV_CCPPFLAGS += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X)
 RISCV_CCPPFLAGS += -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
-RISCV_TARGET_OBJECTS = kernel.rvo
+RISCV_TARGET_OBJECTS = kernel.rvo brg_sha1.rvo
 BSG_MANYCORE_KERNELS = main.riscv
 
 include $(EXAMPLES_PATH)/cuda/appl-riscv.mk
