@@ -32,8 +32,8 @@ float calculate_center_of_mass_y(struct node_t *node);
 
 //Functions for the force calculations
 void update_forces();
-void update_forces_help(int particle, struct node_t *node, float& fx, float& fy);
-void calculate_force(int particle, struct node_t *node, float r, float& fx, float& fy);
+void update_forces_help(int particle, struct node_t *node);
+void calculate_force(int particle, struct node_t *node, float r);
 
 /*
  * Sets initial values for a new node
@@ -244,9 +244,7 @@ void update_forces(int N, struct node_t* root)
           force_y[i] = 0;
           float fx = 0;
           float fy = 0;
-          update_forces_help(i, root, fx, fy);
-          force_x[i] += fx;
-          force_y[i] += fy;
+          update_forces_help(i, root);
         } );
 }
 
@@ -254,13 +252,13 @@ void update_forces(int N, struct node_t* root)
  * Help function for calculating the forces recursively
  * using the Barnes Hut quad tree.
  */
-void update_forces_help(int particle, struct node_t *node, float& fx, float& fy)
+void update_forces_help(int particle, struct node_t *node)
 {
     //The node is a leaf node with a particle and not the particle itself
     if (!node->has_children && node->has_particle && node->particle != particle)
     {
         float r = sqrt((x[particle] - node->c_x) * (x[particle] - node->c_x) + (y[particle] - node->c_y) * (y[particle] - node->c_y));
-        calculate_force(particle, node, r, fx, fy);
+        calculate_force(particle, node, r);
     }
     //The node has children
     else if (node->has_children)
@@ -274,36 +272,26 @@ void update_forces_help(int particle, struct node_t *node, float& fx, float& fy)
      */
         if (theta < 0.5)
         {
-            calculate_force(particle, node, r, fx, fy);
+            calculate_force(particle, node, r);
         }
         else
         {
-            float fx1, fx2, fx3, fx4;
-            float fy1, fy2, fy3, fy4;
-            appl::parallel_invoke(
-                [particle, node, &fx1, &fy1] { update_forces_help(particle, &node->children[0], fx1, fy1); },
-                [particle, node, &fx2, &fy2] { update_forces_help(particle, &node->children[1], fx2, fy2); },
-                [particle, node, &fx3, &fy3] { update_forces_help(particle, &node->children[2], fx3, fy3); },
-                [particle, node, &fx4, &fy4] { update_forces_help(particle, &node->children[3], fx4, fy4); } );
-            fx = fx1 + fx2 + fx3 + fx4;
-            fy = fy1 + fy2 + fy3 + fy4;
+            update_forces_help(particle, &node->children[0]);
+            update_forces_help(particle, &node->children[1]);
+            update_forces_help(particle, &node->children[2]);
+            update_forces_help(particle, &node->children[3]);
         }
-    }
-    else
-    {
-      fx = 0;
-      fy = 0;
     }
 }
 
 /*
  * Calculates and updates the force of a particle from a node.
  */
-void calculate_force(int particle, struct node_t *node, float r, float& fx, float& fy)
+void calculate_force(int particle, struct node_t *node, float r)
 {
     float temp = -grav * mass[particle] * node->total_mass / ((r + epsilon) * (r + epsilon) * (r + epsilon));
-    fx = (x[particle] - node->c_x) * temp;
-    fy = (y[particle] - node->c_y) * temp;
+    force_x[particle] += (x[particle] - node->c_x) * temp;
+    force_y[particle] += (y[particle] - node->c_y) * temp;
 }
 
 struct node_t* construct_tree(int N) {

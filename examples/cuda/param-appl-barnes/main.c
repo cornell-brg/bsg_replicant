@@ -627,8 +627,9 @@ int kernel_appl_barnes (int argc, char **argv) {
                 for (int i = 0; i < N; i++) {
                   bsg_pr_info("particle %d with force_x = (%f, %f) and force_y = (%f, %f)\n", i, h_force_x[i], force_x[i],
                               h_force_y[i], force_y[i]);
-                  error += (fabs(h_force_x[i] - force_x[i]));
-                  error += (fabs(h_force_y[i] - force_y[i]));
+                  error = 0.0;
+                  error += (fabs(h_force_x[i] - force_x[i]) / force_x[i]);
+                  error += (fabs(h_force_y[i] - force_y[i]) / force_y[i]);
                   if (error > 0.0001) {
                     return HB_MC_FAIL;
                   }

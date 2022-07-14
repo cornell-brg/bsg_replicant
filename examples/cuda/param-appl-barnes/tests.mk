@@ -1,1 +1,6 @@
-TESTS += $(call test-name,1000,1,2,2,APPLRTS)
+TESTS += $(call test-name,1024,1,16,8,APPLRTS)
+TESTS += $(call test-name,1024,1,16,8,STATIC)
+TESTS += $(call test-name,2048,1,16,8,APPLRTS)
+TESTS += $(call test-name,2048,1,16,8,STATIC)
+TESTS += $(call test-name,4096,1,16,8,APPLRTS)
+TESTS += $(call test-name,4096,1,16,8,STATIC)
