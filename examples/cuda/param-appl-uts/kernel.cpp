@@ -73,7 +73,6 @@ void uts_v3_kernel( Node* parent )
     }
 
     appl::parallel_for( 0, numChildren, [&]( int i ) {
-        bsg_print_int(10088);
         uts_v3_kernel( &all_children[i] );
       } );
   }
@@ -93,22 +92,36 @@ void uts_v3()
   uts_initRoot( &root, type );
   uts_v3_kernel( &root );
 }
+
+struct param_t {
+  float nonLeafProb;
+  int   nonLeafBF;
+  int   rootId;
+  int   t;
+  int   a;
+  float b_0;
+  int   gen_mx;
+  float shiftDepth;
+  int   g;
+};
+
 extern "C" __attribute__ ((noinline))
-//int kernel_appl_uts(int* results, float _nonLeafProb, int _nonLeafBF, int _rootId,
-//                    int _t, int _a, float _b_0, int _gen_mx, float _shiftDepth,
-//                    int _g, int* dram_buffer) {
-int kernel_appl_uts(int* results, int* dram_buffer) {
+int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
 
-  type     = (tree_t)1;
-  shape_fn = (geoshape_t)3;
-  computeGranularity = 1;
+  bsg_print_int(12305);
+  struct param_t* param = (struct param_t*)(intptr_t)_param;
+  bsg_print_int(12306);
 
-  b_0         = 4.0;// _b_0;
-  rootId      = 19;// _rootId;
-  nonLeafBF   = 4;// _nonLeafBF;
-  nonLeafProb = 0.234375;// _nonLeafProb;
-  gen_mx      = 3;// _gen_mx;
-  shiftDepth  = 0.5;// _shiftDepth;
+  type     = (tree_t)param->t;
+  shape_fn = (geoshape_t)param->a;
+  computeGranularity = param->g;
+
+  b_0         = param->b_0;
+  rootId      = param->rootId;
+  nonLeafBF   = param->nonLeafBF;
+  nonLeafProb = param->nonLeafProb;
+  gen_mx      = param->gen_mx;
+  shiftDepth  = param->shiftDepth;
 
   verify = true;
 
@@ -128,10 +141,7 @@ int kernel_appl_uts(int* results, int* dram_buffer) {
   // --------------------- kernel ------------------------
   appl::runtime_init(dram_buffer);
 
-  // sync
-  appl::sync();
-  bsg_cuda_print_stat_kernel_start();
-
+  // test SHA1
   if (__bsg_id == 0) {
     // sha1 test
     struct state_t mystate;
@@ -142,14 +152,17 @@ int kernel_appl_uts(int* results, int* dram_buffer) {
     for (int i = 0; i < 20; i++) {
       bsg_print_int(mystate.state[i]);
     }
-    bsg_print_int(14850);
     int rand1 = (rng_nextrand( mystate.state ));
     int rand2 = (rng_nextrand( mystate.state ));
-    bsg_print_int(rand1);
-    bsg_print_int(rand2);
     results[0] = rand1;
     results[1] = rand2;
+  }
 
+  // sync
+  appl::sync();
+  bsg_cuda_print_stat_kernel_start();
+
+  if (__bsg_id == 0) {
     // uts
     uts_v3();
 

@@ -133,14 +133,47 @@ int kernel_appl_uts (int argc, char **argv) {
 
                 verify_results( &scalar_result, dataset_ptr->str );
 
-                int N = FIB_IN;
-                int gsize = FIB_GSIZE;
-                const uint32_t cuda_argv[] = {device_result, dram_buffer};
+                struct param_t {
+                  float nonLeafProb;
+                  int   nonLeafBF;
+                  int   rootId;
+                  int   t;
+                  int   a;
+                  float b_0;
+                  int   gen_mx;
+                  float shiftDepth;
+                  int   g;
+                };
+
+                struct param_t param = {
+                  .nonLeafProb = nonLeafProb,
+                  .nonLeafBF   = nonLeafBF,
+                  .rootId      = rootId,
+                  .t           = t,
+                  .a           = a,
+                  .b_0         = b_0,
+                  .gen_mx      = gen_mx,
+                  .shiftDepth  = shiftDepth,
+                  .g           = g
+                };
+
+                eva_t device_param;
+                BSG_CUDA_CALL(hb_mc_device_malloc(&device, sizeof(struct param_t), &device_param));
+
+                hb_mc_dma_htod_t htod = {
+                  .d_addr = device_param,
+                  .h_addr = &param,
+                  .size   = sizeof(struct param_t)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod, 1));
+
+                const uint32_t cuda_argv[3] = {device_result, dram_buffer, device_param};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 2, cuda_argv));
+                printf("Start kernel ...\n");
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 3, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
@@ -168,6 +201,12 @@ int kernel_appl_uts (int argc, char **argv) {
                 printf("rng_nextrand = %d\n", rand1);
                 printf("rng_nextrand = %d\n", rand2);
                 if (rand1 != host_result[0] || rand2 != host_result[1]) {
+                  return HB_MC_FAIL;
+                }
+                int h_numNodes  = host_result[2];
+                int h_numLeaves = host_result[3];
+                int h_maxHeight = host_result[4];
+                if (h_numNodes != numNodes || h_numLeaves != numLeaves || h_maxHeight != maxHeight) {
                   return HB_MC_FAIL;
                 }
                 /*****************************************************************************************************************

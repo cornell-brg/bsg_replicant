@@ -11,9 +11,41 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <stdio.h>
 
 #include "uts-common.hpp"
 #include "uts-datasets.hpp"
+
+#define EULER_CONST 2.718281828459045235
+#define TAYLOR_ITERATIONS 20
+
+float brg_log(float x) {
+    if (x <= 0.0) {
+        printf("log(x <= 0.0)\n");
+    }
+    // Confine x to a sensible range
+    int power_adjust = 0;
+    while (x > 1.0) {
+        x /= EULER_CONST;
+        power_adjust++;
+    }
+    while (x < .25) {
+        x *= EULER_CONST;
+        power_adjust--;
+    }
+
+    // Now use the Taylor series to calculate the logarithm
+    x -= 1.0;
+    float t = 0.0, s = 1.0, z = x;
+    for (int k=1; k<=TAYLOR_ITERATIONS; k++) {
+        t += z * s / k;
+        z *= x;
+        s = -s;
+    }
+
+    // Combine the result with the power_adjust value and return
+    return t + power_adjust;
+}
 
 //------------------------------------------------------------------------
 // UTS Global Variables
@@ -143,24 +175,24 @@ int uts_numChildren_geo( Node* parent )
   int   numChildren, h;
   float p, u;
 
+  if (depth == gen_mx) {
+    return 0;
+  }
+
   // use shape function to compute target b_i
   if ( depth > 0 ) {
     switch ( shape_fn ) {
 
     // expected size polynomial in depth
     case EXPDEC:
-      b_i = b_0 *
-            std::pow( (float)depth, -log( b_0 ) / log( (float)gen_mx ) );
+      printf("Error: does not support EXPDEC\n");
+      exit(1);
       break;
 
     // cyclic tree size
     case CYCLIC:
-      if ( depth > 5 * gen_mx ) {
-        b_i = 0.0;
-        break;
-      }
-      b_i = std::pow( b_0, std::sin( 2.0 * 3.141592653589793 *
-                                     (float)depth / (float)gen_mx ) );
+      printf("Error: does not support CYCLIC\n");
+      exit(1);
       break;
 
     // identical distribution at all nodes up to max depth
@@ -186,7 +218,7 @@ int uts_numChildren_geo( Node* parent )
 
   // max number of children at this cumulative probability
   // (from inverse geometric cumulative density function)
-  numChildren = (int)std::floor( log( 1 - u ) / log( 1 - p ) );
+  numChildren = (int)std::floor( brg_log( 1 - u ) / brg_log( 1 - p ) );
 
   return numChildren;
 }
