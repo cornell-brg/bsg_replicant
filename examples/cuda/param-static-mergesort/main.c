@@ -190,7 +190,7 @@ int kernel_static_mergesort (int argc, char **argv) {
                  ******************************************************************************************************************/
                 int32_t iters  = 0;
                 int32_t factor = 1;
-                while( factor != bsg_tiles_X * bsg_tiles_Y) {
+                while( factor != bsg_tiles_X * bsg_tiles_Y * 8) {
                   ++iters;
                   factor = factor * 2;
                 }
