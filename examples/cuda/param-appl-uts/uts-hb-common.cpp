@@ -15,6 +15,9 @@
 #define TAYLOR_ITERATIONS 20
 
 float brg_log(float x) {
+    if (x <= 0.0) {
+        bsg_print_int(7903);
+    }
     // Confine x to a sensible range
     int power_adjust = 0;
     while (x > 1.0) {
@@ -158,6 +161,10 @@ int uts_numChildren_geo( Node* parent )
   int   depth = parent->height;
   int   numChildren, h;
   float p, u;
+
+  if (depth == gen_mx) {
+    return 0;
+  }
 
   // use shape function to compute target b_i
   if ( depth > 0 ) {

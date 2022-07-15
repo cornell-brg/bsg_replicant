@@ -48,7 +48,8 @@ void uts_v3_kernel( Node* parent )
     // run() and run_and_wait(). After run_and_wait() finishes, these
     // definitions go out of scope and are automatically cleaned up.
 
-    Node all_children[numChildren];
+    // Node all_children[numChildren];
+    Node* all_children = (Node*)appl::appl_malloc( numChildren * sizeof(Node) );
 
     // Node creation
 
