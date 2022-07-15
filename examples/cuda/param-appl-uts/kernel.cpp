@@ -32,6 +32,7 @@ void uts_v3_kernel( Node* parent )
   // Record number of children in parent
 
   parent->numChildren = numChildren;
+  bsg_print_int(numChildren);
 
   // Construct children and push them onto stack
 
@@ -52,6 +53,7 @@ void uts_v3_kernel( Node* parent )
     // Node creation
 
     for ( int i = 0; i < numChildren; i++ ) {
+      bsg_print_int(i);
       Node* child = &all_children[i];
       initNode( child );
       child->height = parentHeight + 1;
@@ -70,6 +72,7 @@ void uts_v3_kernel( Node* parent )
     }
 
     appl::parallel_for( 0, numChildren, [&]( int i ) {
+        bsg_print_int(10088);
         uts_v3_kernel( &all_children[i] );
       } );
   }
@@ -90,16 +93,39 @@ void uts_v3()
   uts_v3_kernel( &root );
 }
 extern "C" __attribute__ ((noinline))
-int kernel_appl_uts(int* results, int n, int grain_size, int* dram_buffer) {
+//int kernel_appl_uts(int* results, float _nonLeafProb, int _nonLeafBF, int _rootId,
+//                    int _t, int _a, float _b_0, int _gen_mx, float _shiftDepth,
+//                    int _g, int* dram_buffer) {
+int kernel_appl_uts(int* results, int* dram_buffer) {
+
+  type     = (tree_t)1;
+  shape_fn = (geoshape_t)3;
+  computeGranularity = 1;
+
+  b_0         = 4.0;// _b_0;
+  rootId      = 19;// _rootId;
+  nonLeafBF   = 4;// _nonLeafBF;
+  nonLeafProb = 0.234375;// _nonLeafProb;
+  gen_mx      = 3;// _gen_mx;
+  shiftDepth  = 0.5;// _shiftDepth;
+
+  verify = true;
 
   // debug print
   if (__bsg_id == 0) {
-    bsg_print_int(n);
-    bsg_print_int(grain_size);
+    bsg_print_float(nonLeafProb);
+    bsg_print_int(nonLeafBF);
+    bsg_print_int(rootId);
+    bsg_print_int((int)type);
+    bsg_print_int((int)shape_fn);
+    bsg_print_float(b_0);
+    bsg_print_int(gen_mx);
+    bsg_print_float(shiftDepth);
+    bsg_print_int(computeGranularity);
   }
 
   // --------------------- kernel ------------------------
-  appl::runtime_init(dram_buffer, 2);
+  appl::runtime_init(dram_buffer);
 
   // sync
   appl::sync();

@@ -135,12 +135,12 @@ int kernel_appl_uts (int argc, char **argv) {
 
                 int N = FIB_IN;
                 int gsize = FIB_GSIZE;
-                const uint32_t cuda_argv[4] = {device_result, N, gsize, dram_buffer};
+                const uint32_t cuda_argv[] = {device_result, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 4, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 2, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.
