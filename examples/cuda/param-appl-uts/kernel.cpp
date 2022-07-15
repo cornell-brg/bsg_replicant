@@ -108,9 +108,7 @@ struct param_t {
 extern "C" __attribute__ ((noinline))
 int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
 
-  bsg_print_int(12305);
   struct param_t* param = (struct param_t*)(intptr_t)_param;
-  bsg_print_int(12306);
 
   type     = (tree_t)param->t;
   shape_fn = (geoshape_t)param->a;

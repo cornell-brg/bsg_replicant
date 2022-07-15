@@ -24,6 +24,11 @@
 #define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
+
+#define DATASET_NAME STR(DATASET)
+
 int kernel_appl_uts (int argc, char **argv) {
         int rc;
         char *bin_path, *test_name;
@@ -69,7 +74,7 @@ int kernel_appl_uts (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                Dataset* dataset_ptr = choose_dataset("test");
+                Dataset* dataset_ptr = choose_dataset(DATASET_NAME);
                 // debug print of the dataset
                 printf("Using Dataset %s:\n", dataset_ptr->str);
 
