@@ -50,9 +50,13 @@ $(addsuffix .profile,$(TESTS)): %.profile: %
 $(addsuffix .exec,$(TESTS)): %.exec: %
 	$(MAKE) -C $< exec.log
 
+$(addsuffix .stats,$(TESTS)): %.stats: %
+	$(MAKE) -C $< stats
+
 .PHONY: profile exec
 profile: $(addsuffix .profile,$(TESTS))
 exec:    $(addsuffix .exec,$(TESTS))
+stats:   $(addsuffix .stats,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
 
