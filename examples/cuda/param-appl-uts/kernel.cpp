@@ -250,7 +250,7 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
 
   if (__bsg_id == 0) {
     // uts
-    uts_v4();
+    uts_v3();
 
     results[2] = bsg_amoor(&numNodes, 0);
     results[3] = bsg_amoor(&numLeaves, 0);
