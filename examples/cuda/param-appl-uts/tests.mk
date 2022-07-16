@@ -1,1 +1,1 @@
-TESTS += $(call test-name,test,2,2,APPLRTS)
+TESTS += $(call test-name,test,4,4,APPLRTS)
