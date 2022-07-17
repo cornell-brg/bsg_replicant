@@ -242,6 +242,12 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
     int rand2 = (rng_nextrand( mystate.state ));
     results[0] = rand1;
     results[1] = rand2;
+
+
+    buf = (Node*)appl::appl_malloc( 1024 * sizeof(Node) );
+    Node* root = &(buf[buf_tail++]);
+    uts_initRoot( root, type );
+    uts_v4_kernel( &(buf[buf_head++]) );
   }
 
   // sync
@@ -249,8 +255,10 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
   bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
-    // uts
-    uts_v3();
+    Node* nodes = &(buf[buf_head]);
+    appl::parallel_for_1(size_t(0), size_t(buf_tail - buf_head), [nodes](size_t i) {
+        uts_v3_kernel( &(nodes[i]) );
+    });
 
     results[2] = bsg_amoor(&numNodes, 0);
     results[3] = bsg_amoor(&numLeaves, 0);
