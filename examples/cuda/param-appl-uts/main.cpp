@@ -172,13 +172,13 @@ int kernel_appl_uts (int argc, char **argv) {
                 };
                 BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod, 1));
 
-                const uint32_t cuda_argv[3] = {device_result, dram_buffer, device_param};
+                const uint32_t cuda_argv[4] = {device_result, dram_buffer, device_param, INIT};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
                  ******************************************************************************************************************/
                 printf("Start kernel ...\n");
-                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 3, cuda_argv));
+                BSG_CUDA_CALL(hb_mc_kernel_enqueue (&device, grid_dim, tg_dim, "kernel_appl_uts", 4, cuda_argv));
 
                 /*****************************************************************************************************************
                  * Launch and execute all tile groups on device and wait for all to finish.

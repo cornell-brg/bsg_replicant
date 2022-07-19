@@ -4,10 +4,11 @@ REPLICANT_PATH = $(shell git rev-parse --show-toplevel)
 all: generate
 
 # call to generate a test name
-test-name = uts_$(1)__tgx_$(2)__tgy_$(3)__appl-impl_$(4)
+test-name = uts_$(1)__init_$(2)__tgx_$(3)__tgy_$(4)__appl-impl_$(5)
 
 # call to get parameter from test name
 get-test = $(lastword $(subst _, ,$(filter uts_%,$(subst __, ,$(1)))))
+get-init = $(lastword $(subst _, ,$(filter init_%,$(subst __, ,$(1)))))
 get-tgx = $(lastword $(subst _, ,$(filter tgx_%,$(subst __, ,$(1)))))
 get-tgy = $(lastword $(subst _, ,$(filter tgy_%,$(subst __, ,$(1)))))
 get-appl-impl = $(lastword $(subst _, ,$(filter appl-impl_%,$(subst __, ,$(1)))))
@@ -24,6 +25,7 @@ $(addsuffix /parameters.mk,$(TESTS_DIRS)): %/parameters.mk:
 	@touch $@
 	@echo test-name  = $* >> $@
 	@echo uts-name = $(call get-test,$*) >> $@
+	@echo init = $(call get-init,$*) >> $@
 	@echo tgx = $(call get-tgx,$*) >> $@
 	@echo tgy = $(call get-tgy,$*) >> $@
 	@echo appl-impl = $(call get-appl-impl,$*) >> $@

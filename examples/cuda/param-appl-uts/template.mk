@@ -72,7 +72,7 @@ CDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
 CXXDEFINES += -Dbsg_tiles_X=$(TILE_GROUP_DIM_X) -Dbsg_tiles_Y=$(TILE_GROUP_DIM_Y)
 
 FLAGS     = -g -Wall -Wno-unused-function -Wno-unused-variable
-FLAGS    += -DDATASET=$(uts-name)
+FLAGS    += -DDATASET=$(uts-name) -DINIT=$(init)
 CFLAGS   += -std=c99 $(FLAGS)
 CXXFLAGS += -std=c++11 $(FLAGS)
 

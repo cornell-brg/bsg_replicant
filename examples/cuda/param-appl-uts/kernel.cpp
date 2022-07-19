@@ -110,7 +110,7 @@ struct param_t {
 };
 
 extern "C" __attribute__ ((noinline))
-int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
+int kernel_appl_uts(int* results, int* dram_buffer, int* _param, int init) {
 
   struct param_t* param = (struct param_t*)(intptr_t)_param;
 
@@ -138,6 +138,7 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
     bsg_print_int(gen_mx);
     bsg_print_float(shiftDepth);
     bsg_print_int(computeGranularity);
+    bsg_print_int(init);
   }
 
   // --------------------- kernel ------------------------
@@ -170,7 +171,7 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
   appl::sync();
   bsg_cuda_print_stat_kernel_start();
 
-  if (__bsg_id == 0) {
+  if (__bsg_id == 0 && init) {
     // get at least 128 nodes
     while (buf_tail - buf_head < appl::get_nthreads() && buf_tail != buf_head && buf_tail < 1024) {
       bsg_print_int(12303);
