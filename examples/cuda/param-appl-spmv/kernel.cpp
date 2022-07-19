@@ -3,7 +3,7 @@
 #include "csr_matrix.h"
 #include <cmath>
 
-#define DEBUG_SPMV
+//#define DEBUG_SPMV
 #ifdef  DEBUG_SPMV
 #define spmv_print_int(x)                       \
     bsg_print_int(x)
