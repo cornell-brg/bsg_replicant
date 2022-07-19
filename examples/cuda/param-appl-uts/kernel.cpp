@@ -21,7 +21,7 @@ ET writeMax(ET* p, ET val) {
   return result;
 }
 
-void uts_v3_kernel( Node* parent )
+void uts_v3_kernel( Node* parent, bool init = false )
 {
   if ( verify )
     bsg_amoadd(&numNodes, 1);
@@ -53,7 +53,13 @@ void uts_v3_kernel( Node* parent )
     // definitions go out of scope and are automatically cleaned up.
 
     // Node all_children[numChildren];
-    Node* all_children = (Node*)appl::appl_malloc( numChildren * sizeof(Node) );
+    Node* all_children = nullptr;
+    if (init) {
+      all_children = &(buf[buf_tail]);
+      buf_tail += numChildren;
+    } else {
+      all_children = (Node*)appl::appl_malloc( numChildren * sizeof(Node) );
+    }
 
     // Node creation
 
@@ -76,110 +82,20 @@ void uts_v3_kernel( Node* parent )
       }
     }
 
-    appl::parallel_for( 0, numChildren, [&]( int i ) {
-        uts_v3_kernel( &all_children[i] );
-      } );
-  }
-
-  // No children
-
-  else {
-    // Track num leaves for verification
-    if ( verify )
-      bsg_amoadd(&numLeaves, 1);
-  }
-}
-
-// applrts and navie baseline
-void uts_v3()
-{
-  Node root;
-  uts_initRoot( &root, type );
-  uts_v3_kernel( &root );
-}
-
-void uts_v4_kernel( Node* parent )
-{
-  if ( verify )
-    bsg_amoadd(&numNodes, 1);
-
-  // Calculate how many children this node should have
-
-  int numChildren, childType;
-
-  numChildren = uts_numChildren( parent );
-  childType   = uts_childType( parent );
-
-  // Record number of children in parent
-
-  parent->numChildren = numChildren;
-  bsg_print_int(numChildren);
-
-  // Construct children and push them onto stack
-
-  int parentHeight = parent->height;
-
-  if ( numChildren > 0 ) {
-
-    // Give a SHA-1 hash to each child
-
-    Node* all_children = &(buf[buf_tail]);
-    buf_tail += numChildren;
-
-    // Node creation
-
-    for ( int i = 0; i < numChildren; i++ ) {
-      bsg_print_int(i);
-      Node* child = &all_children[i];
-      initNode( child );
-      child->height = parentHeight + 1;
-      child->type   = childType;
-
-      for ( int j = 0; j < computeGranularity; j++ ) {
-        // computeGranularity controls number of rng_spawn calls per node
-        rng_spawn( parent->state.state, child->state.state, i );
-      }
-
-      // Track tree height for verification
-
-      if ( verify ) {
-        writeMax(&maxHeight, child->height);
-      }
+    if (!init) {
+      appl::parallel_for( 0, numChildren, [&]( int i ) {
+          uts_v3_kernel( &all_children[i] );
+        } );
     }
   }
 
   // No children
-
   else {
     // Track num leaves for verification
     if ( verify )
       bsg_amoadd(&numLeaves, 1);
   }
 }
-
-void uts_v4() {
-  buf = (Node*)appl::appl_malloc( 1024 * sizeof(Node) );
-  Node* root = &(buf[buf_tail++]);
-  uts_initRoot( root, type );
-  while (buf_tail - buf_head < appl::get_nthreads() && buf_tail != buf_head && buf_tail < 1024) {
-    bsg_print_int(12303);
-    bsg_print_int(buf_head);
-    bsg_print_int(buf_tail);
-    uts_v4_kernel( &(buf[buf_head++]) );
-  }
-  if (buf_tail >= 1024) {
-    // buffer overflow
-    bsg_print_int(7904);
-  }
-  // still have work to do
-  if (buf_tail != buf_head && buf_tail < 1024) {
-    Node* nodes = &(buf[buf_head]);
-    appl::parallel_for_1(size_t(0), size_t(buf_tail - buf_head), [nodes](size_t i) {
-        uts_v3_kernel( &(nodes[i]) );
-    });
-  }
-}
-
 
 struct param_t {
   float nonLeafProb;
@@ -247,12 +163,28 @@ int kernel_appl_uts(int* results, int* dram_buffer, int* _param) {
     buf = (Node*)appl::appl_malloc( 1024 * sizeof(Node) );
     Node* root = &(buf[buf_tail++]);
     uts_initRoot( root, type );
-    uts_v4_kernel( &(buf[buf_head++]) );
+    uts_v3_kernel( &(buf[buf_head++]), true );
   }
 
   // sync
   appl::sync();
   bsg_cuda_print_stat_kernel_start();
+
+  if (__bsg_id == 0) {
+    // get at least 128 nodes
+    while (buf_tail - buf_head < appl::get_nthreads() && buf_tail != buf_head && buf_tail < 1024) {
+      bsg_print_int(12303);
+      bsg_print_int(buf_head);
+      bsg_print_int(buf_tail);
+      uts_v3_kernel( &(buf[buf_head++]), true );
+    }
+    if (buf_tail >= 1024) {
+      // buffer overflow
+      bsg_print_int(7904);
+    }
+  }
+
+  appl::sync();
 
   if (__bsg_id == 0) {
     Node* nodes = &(buf[buf_head]);
