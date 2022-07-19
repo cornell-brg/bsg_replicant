@@ -7,7 +7,7 @@
 #include "appl.hpp"
 #include "parallel_prefix_sum.hpp"
 #include "tuple_dyn_vec.h"
-//#define DEBUG_SPGEMM
+#define DEBUG_SPGEMM
 #ifdef  DEBUG_SPGEMM
 #define bsg_print_int_dbg(x)                    \
     bsg_print_int(x)
