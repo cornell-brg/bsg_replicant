@@ -281,9 +281,12 @@ void cilkmerge( ELM* low1, ELM* high1, ELM* low2, ELM* high2,
    */
   *( lowdest + lowsize + 1 ) = *split1;
 
-  cilkmerge( low1, split1 - 1, low2, split2, lowdest );
-  cilkmerge( split1 + 1, high1, split2 + 1, high2,
-             lowdest + lowsize + 2 );
+  appl::parallel_invoke(
+      [&] { cilkmerge( low1, split1 - 1, low2, split2, lowdest ); },
+      [&] {
+        cilkmerge( split1 + 1, high1, split2 + 1, high2,
+                   lowdest + lowsize + 2 );
+      } );
 
   return;
 }
@@ -318,13 +321,15 @@ void cilksort( ELM* low, ELM* tmp, int32_t size )
   D    = C + quarter;
   tmpD = tmpC + quarter;
 
-  cilksort( A, tmpA, quarter );
-  cilksort( B, tmpB, quarter );
-  cilksort( C, tmpC, quarter );
-  cilksort( D, tmpD, size - 3 * quarter );
+  appl::parallel_invoke(
+      [&] { cilksort( A, tmpA, quarter ); },
+      [&] { cilksort( B, tmpB, quarter ); },
+      [&] { cilksort( C, tmpC, quarter ); },
+      [&] { cilksort( D, tmpD, size - 3 * quarter ); } );
 
-  cilkmerge( A, A + quarter - 1, B, B + quarter - 1, tmpA );
-  cilkmerge( C, C + quarter - 1, D, low + size - 1, tmpC );
+  appl::parallel_invoke(
+      [&] { cilkmerge( A, A + quarter - 1, B, B + quarter - 1, tmpA ); },
+      [&] { cilkmerge( C, C + quarter - 1, D, low + size - 1, tmpC ); } );
 
   cilkmerge( tmpA, tmpC - 1, tmpC, tmpA + size - 1, A );
 }
@@ -333,8 +338,9 @@ void cilksort( ELM* low, ELM* tmp, int32_t size )
 // then do cuda-style merge at top level
 void static_sort( ELM* low, ELM* tmp, int32_t size ) {
   // parallel sort
-  int32_t per_core  = (size-1) / appl::get_nthreads() + 1;
-  appl::parallel_for_1( size_t( 0 ), appl::get_nthreads(),
+  size_t chunks = appl::get_nthreads() * 8;
+  int32_t per_core  = (size-1) / chunks + 1;
+  appl::parallel_for_1( size_t( 0 ), chunks,
       [low, tmp, size, per_core]( size_t i ) {
         int32_t start     = i * per_core;
         int32_t end       = (start + per_core) > size ? size : (start + per_core);
@@ -348,9 +354,9 @@ void static_sort( ELM* low, ELM* tmp, int32_t size ) {
   ELM* b1_end = b1 + size - 1;
   ELM* b2_end = b2 + size - 1;
   int32_t iters = 0;
-  while( factor != appl::get_nthreads() ) {
+  while( factor != chunks ) {
     // merge
-    appl::parallel_for_1( size_t( 0 ), appl::get_nthreads(),
+    appl::parallel_for_1( size_t( 0 ), chunks,
         [b1, b2, b1_end, b2_end, size, factor, per_core]( size_t i ) {
           if (i % (factor*2) == 0) {
             ELM* low1  = b1 + i * per_core;
