@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <bsg_manycore_regression.h>
 #include <iostream>
+#include <vector>
 
 // Ligra headers
 #include "ligra.h"
@@ -198,11 +199,11 @@ int kernel_appl_pagerank (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                float host_result[2 * G.n];
+                std::vector<float> host_result(2 * G.n);
                 hb_mc_dma_dtoh_t dtoh = {
                   .d_addr = device_result,
                   .h_addr = (&host_result[0]),
-                  .size   = 2 * G.n * sizeof(float)
+                  .size   = host_result.size() * sizeof(float)
                 };
                 BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh, 1));
 
