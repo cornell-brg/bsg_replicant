@@ -61,10 +61,14 @@ $(addsuffix .exec,$(TESTS)): %.exec: %
 $(addsuffix .batch-exec,$(TESTS)): %.batch-exec: %
 	sbatch $</sbatch.sh exec.log
 
+$(addsuffix .batch-profile,$(TESTS)): %.batch-profile: %
+	sbatch $</sbatch.sh profile.log
+
 .PHONY: profile exec
 profile: $(addsuffix .profile,$(TESTS))
-exec:    $(addsuffix .exec,$(TESTS))
-batch-exec:    $(addsuffix .batch-exec,$(TESTS))
+exec: $(addsuffix .exec,$(TESTS))
+batch-exec: $(addsuffix .batch-exec,$(TESTS))
+batch-profile: $(addsuffix .batch-profile,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
 	rm -rf $(TESTS_DIRS).log
