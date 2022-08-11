@@ -40,9 +40,15 @@ $(addsuffix /Makefile,$(TESTS_DIRS)): %/Makefile: template.mk
 	@mkdir -p $(dir $@)
 	@cp template.mk $@
 
+$(addsuffix /sbatch.sh,$(TESTS_DIRS)): %/sbatch.sh: sbatch.sh
+	@echo Creating $@
+	@mkdir -p $(dir $@)
+	@sed 's/jOBnAme/$*/g' sbatch.sh > $@
+
 $(TESTS_DIRS): %: %/app_path.mk
 $(TESTS_DIRS): %: %/parameters.mk
 $(TESTS_DIRS): %: %/Makefile
+$(TESTS_DIRS): %: %/sbatch.sh
 
 generate: $(TESTS_DIRS)
 
@@ -52,10 +58,15 @@ $(addsuffix .profile,$(TESTS)): %.profile: %
 $(addsuffix .exec,$(TESTS)): %.exec: %
 	$(MAKE) -C $< exec.log
 
+$(addsuffix .batch-exec,$(TESTS)): %.batch-exec: %
+	sbatch $</sbatch.sh exec.log
+
 .PHONY: profile exec
 profile: $(addsuffix .profile,$(TESTS))
 exec:    $(addsuffix .exec,$(TESTS))
+batch-exec:    $(addsuffix .batch-exec,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
+	rm -rf $(TESTS_DIRS).log
 
 
