@@ -40,9 +40,15 @@ $(addsuffix /Makefile,$(TESTS_DIRS)): %/Makefile: template.mk
 	@mkdir -p $(dir $@)
 	@cp template.mk $@
 
+$(addsuffix /sbatch.sh,$(TESTS_DIRS)): %/sbatch.sh: sbatch.sh
+	@echo Creating $@
+	@mkdir -p $(dir $@)
+	@sed 's/jOBnAme/$*/g' sbatch.sh > $@
+
 $(TESTS_DIRS): %: %/app_path.mk
 $(TESTS_DIRS): %: %/parameters.mk
 $(TESTS_DIRS): %: %/Makefile
+$(TESTS_DIRS): %: %/sbatch.sh
 
 generate: $(TESTS_DIRS)
 
@@ -61,6 +67,12 @@ $(addsuffix .stats,$(TESTS)): %.stats: %
 $(addsuffix .pchistpdf,$(TESTS)): %.pchistpdf: %
 	$(MAKE) -C $< pchistpdf
 
+$(addsuffix .batch-exec,$(TESTS)): %.batch-exec: %
+	sbatch $</sbatch.sh exec.log
+
+$(addsuffix .batch-profile,$(TESTS)): %.batch-profile: %
+	sbatch $</sbatch.sh profile.log
+
 .PHONY: profile exec
 
 pc-histogram: $(addsuffix .pc-histogram,$(TESTS))
@@ -68,7 +80,10 @@ profile: $(addsuffix .profile,$(TESTS))
 exec:    $(addsuffix .exec,$(TESTS))
 stats:   $(addsuffix .stats,$(TESTS))
 pchistpdf: $(addsuffix .pchistpdf,$(TESTS))
+batch-exec: $(addsuffix .batch-exec,$(TESTS))
+batch-profile: $(addsuffix .batch-profile,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
+	rm -rf *.log
 
 
