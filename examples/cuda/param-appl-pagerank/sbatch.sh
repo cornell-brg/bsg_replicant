@@ -8,6 +8,7 @@ pwd; hostname; date
 
 module load scl-8
 module load synopsys-2020/synopsys-vcs-R-2020.12
+source setup-python3.sh
 (cd jOBnAme; pwd; make $1;)
 
 date

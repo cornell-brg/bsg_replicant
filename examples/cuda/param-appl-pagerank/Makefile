@@ -73,6 +73,9 @@ $(addsuffix .batch-exec,$(TESTS)): %.batch-exec: %
 $(addsuffix .batch-profile,$(TESTS)): %.batch-profile: %
 	sbatch $</sbatch.sh profile.log
 
+$(addsuffix .batch-stats,$(TESTS)): %.batch-stats: %
+	sbatch $</sbatch.sh stats
+
 .PHONY: profile exec
 
 pc-histogram: $(addsuffix .pc-histogram,$(TESTS))
@@ -82,6 +85,7 @@ stats:   $(addsuffix .stats,$(TESTS))
 pchistpdf: $(addsuffix .pchistpdf,$(TESTS))
 batch-exec: $(addsuffix .batch-exec,$(TESTS))
 batch-profile: $(addsuffix .batch-profile,$(TESTS))
+batch-stats: $(addsuffix .batch-stats,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
 	rm -rf *.log
