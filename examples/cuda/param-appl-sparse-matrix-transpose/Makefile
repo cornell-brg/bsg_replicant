@@ -1,16 +1,18 @@
 REPLICANT_PATH = $(shell git rev-parse --show-toplevel)
+MANYCORE_COMMIT = $(shell cd $(REPLICANT_PATH)/../bsg_manycore/ && git log -1 --pretty=format:"%h")
 
 .PHONY: all
 all: generate
 
 # call to generate a test name
-test-name = matrix-input_$(1)__tgx_$(2)__tgy_$(3)__impl_$(4)
+test-name = matrix-input_$(1)__tgx_$(2)__tgy_$(3)__impl_$(4)__mc_$(MANYCORE_COMMIT)
 
 # call to get parameter from test name
 get-matrix-input = $(lastword $(subst _, ,$(filter matrix-input_%,$(subst __, ,$(1)))))
 get-tgx = $(lastword $(subst _, ,$(filter tgx_%,$(subst __, ,$(1)))))
 get-tgy = $(lastword $(subst _, ,$(filter tgy_%,$(subst __, ,$(1)))))
 get-impl = $(lastword $(subst _, ,$(filter impl_%,$(subst __, ,$(1)))))
+get-manycore-commit = $(lastword $(subst _, ,$(filter mc_%,$(subst __, ,$(1)))))
 
 # defines tests
 TESTS =
@@ -38,9 +40,15 @@ $(addsuffix /Makefile,$(TESTS_DIRS)): %/Makefile: template.mk
 	@mkdir -p $(dir $@)
 	@cp template.mk $@
 
+$(addsuffix /sbatch.sh,$(TESTS_DIRS)): %/sbatch.sh: sbatch.sh
+	@echo Creating $@
+	@mkdir -p $(dir $@)
+	@sed 's/jOBnAme/$*/g' sbatch.sh > $@
+
 $(TESTS_DIRS): %: %/app_path.mk
 $(TESTS_DIRS): %: %/parameters.mk
 $(TESTS_DIRS): %: %/Makefile
+$(TESTS_DIRS): %: %/sbatch.sh
 
 include $(REPLICANT_PATH)/examples/cuda/sparse/eigen.mk
 generate: $(TESTS_DIRS) eigen
@@ -60,6 +68,15 @@ $(addsuffix .stats,$(TESTS)): %.stats: %
 $(addsuffix .pchistpdf,$(TESTS)): %.pchistpdf: %
 	$(MAKE) -C $< pchistpdf
 
+$(addsuffix .batch-exec,$(TESTS)): %.batch-exec: %
+	sbatch $</sbatch.sh exec.log
+
+$(addsuffix .batch-profile,$(TESTS)): %.batch-profile: %
+	sbatch $</sbatch.sh profile.log
+
+$(addsuffix .batch-stats,$(TESTS)): %.batch-stats: %
+	sbatch $</sbatch.sh stats
+
 .PHONY: profile exec
 
 pc-histogram: $(addsuffix .pc-histogram,$(TESTS))
@@ -67,7 +84,11 @@ profile: $(addsuffix .profile,$(TESTS))
 exec:    $(addsuffix .exec,$(TESTS))
 stats:	 $(addsuffix .stats,$(TESTS))
 pchistpdf: $(addsuffix .pchistpdf,$(TESTS))
+batch-exec: $(addsuffix .batch-exec,$(TESTS))
+batch-profile: $(addsuffix .batch-profile,$(TESTS))
+batch-stats: $(addsuffix .batch-stats,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
+	rm -rf *$(MANYCORE_COMMIT).log
 
 
