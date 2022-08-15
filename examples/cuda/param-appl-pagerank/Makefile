@@ -1,10 +1,11 @@
 REPLICANT_PATH = $(shell git rev-parse --show-toplevel)
+MANYCORE_COMMIT = $(shell cd $(REPLICANT_PATH)/../bsg_manycore/ && git log -1 --pretty=format:"%h")
 
 .PHONY: all
 all: generate
 
 # call to generate a test name
-test-name = graph-input_$(1)__max-iter_$(2)__tgx_$(3)__tgy_$(4)__appl-impl_$(5)
+test-name = graph-input_$(1)__max-iter_$(2)__tgx_$(3)__tgy_$(4)__appl-impl_$(5)_$(MANYCORE_COMMIT)
 
 # call to get parameter from test name
 get-graph-input = $(lastword $(subst _, ,$(filter graph-input_%,$(subst __, ,$(1)))))
