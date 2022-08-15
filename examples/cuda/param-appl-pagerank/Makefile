@@ -90,6 +90,6 @@ batch-profile: $(addsuffix .batch-profile,$(TESTS))
 batch-stats: $(addsuffix .batch-stats,$(TESTS))
 purge:
 	rm -rf $(TESTS_DIRS)
-	rm -rf *.log
+	rm -rf *$(MANYCORE_COMMIT).log
 
 
