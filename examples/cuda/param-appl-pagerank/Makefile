@@ -5,7 +5,7 @@ MANYCORE_COMMIT = $(shell cd $(REPLICANT_PATH)/../bsg_manycore/ && git log -1 --
 all: generate
 
 # call to generate a test name
-test-name = graph-input_$(1)__max-iter_$(2)__tgx_$(3)__tgy_$(4)__appl-impl_$(5)_$(MANYCORE_COMMIT)
+test-name = graph-input_$(1)__max-iter_$(2)__tgx_$(3)__tgy_$(4)__appl-impl_$(5)__mc_$(MANYCORE_COMMIT)
 
 # call to get parameter from test name
 get-graph-input = $(lastword $(subst _, ,$(filter graph-input_%,$(subst __, ,$(1)))))
@@ -13,6 +13,7 @@ get-max-iter = $(lastword $(subst _, ,$(filter max-iter_%,$(subst __, ,$(1)))))
 get-tgx = $(lastword $(subst _, ,$(filter tgx_%,$(subst __, ,$(1)))))
 get-tgy = $(lastword $(subst _, ,$(filter tgy_%,$(subst __, ,$(1)))))
 get-appl-impl = $(lastword $(subst _, ,$(filter appl-impl_%,$(subst __, ,$(1)))))
+get-manycore-commit = $(lastword $(subst _, ,$(filter mc_%,$(subst __, ,$(1)))))
 
 # defines tests
 TESTS =
