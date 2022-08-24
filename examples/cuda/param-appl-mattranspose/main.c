@@ -142,18 +142,18 @@ int kernel_mattranspose (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Allocate memory on the host for A & B and initialize with random values.
                  ******************************************************************************************************************/
-                REAL A_host[N * N]; /* allocate A[N] on the host */
+                REAL* A_host = (REAL*)malloc( N * N * sizeof(REAL) ); /* allocate A[N] on the host */
                 init( A_host, N );
 
-                for (int i = 0; i < N * N; i++) {
-                        printf("A_host[%d] = %f\n", i, A_host[i]);
-                }
                 /*****************************************************************************************************************
                  * Copy A & B from host onto device DRAM.
                  ******************************************************************************************************************/
-                void *dst = (void *) ((intptr_t) A_device);
-                void *src = (void *) &A_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, dst, src, N * N * sizeof(REAL), HB_MC_MEMCPY_TO_DEVICE)); /* Copy A to the device  */
+                hb_mc_dma_htod_t htod = {
+                  .d_addr = A_device,
+                  .h_addr = A_host,
+                  .size   = N * N * sizeof(REAL)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_device(&device, &htod, 1));
 
                 /*****************************************************************************************************************
                  * Define block_size_x/y: amount of work for each tile group
@@ -181,10 +181,14 @@ int kernel_mattranspose (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Copy result matrix back from device DRAM into host memory.
                  ******************************************************************************************************************/
-                REAL B_host[N * N];
-                src = (void *) ((intptr_t) B_device);
-                dst = (void *) &B_host[0];
-                BSG_CUDA_CALL(hb_mc_device_memcpy (&device, (void *) dst, src, N * N * sizeof(REAL), HB_MC_MEMCPY_TO_HOST)); /* copy C to the host */
+                REAL* B_host = (REAL*)malloc( N * N * sizeof(REAL) );
+
+                hb_mc_dma_dtoh_t dtoh_C = {
+                  .d_addr = B_device,
+                  .h_addr = B_host,
+                  .size   = N * N * sizeof(REAL)
+                };
+                BSG_CUDA_CALL(hb_mc_device_dma_to_host(&device, &dtoh_C, 1));
 
                 /*****************************************************************************************************************
                  * Freeze the tiles and memory manager cleanup.
@@ -194,7 +198,7 @@ int kernel_mattranspose (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Calculate the expected result using host code and compare the results.
                  ******************************************************************************************************************/
-                REAL B_expected[N * N];
+                REAL* B_expected = (REAL*)malloc( N * N * sizeof(REAL) );
                 mat_transpose(A_host, B_expected, N, N, 0, 0);
 
                 int mismatch = 0;
