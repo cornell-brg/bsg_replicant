@@ -2,11 +2,7 @@
 #include "bsg_manycore.h"
 #include "appl.hpp"
 
-#include "bsg_tile_group_barrier.hpp"
-
 #define VERIFY 1
-
-bsg_barrier<bsg_tiles_X, bsg_tiles_Y> barrier;
 
 int nsolutions __attribute__ ((section (".dram")));
 
@@ -66,17 +62,17 @@ int kernel_appl_nqueens(int* results, int n, int grain_size, int* dram_buffer) {
   // debug print
   if (__bsg_id == 0) {
     bsg_print_int(n);
-    bsg_print_int(grain_size);
   }
 
   // output
   int32_t result     = -1;
 
   // --------------------- kernel ------------------------
-  appl::runtime_init(dram_buffer, grain_size);
+  appl::runtime_init(dram_buffer);
 
   // sync
-  barrier.sync();
+  appl::sync();
+  bsg_cuda_print_stat_kernel_start();
 
   if (__bsg_id == 0) {
     char a[n];
@@ -87,10 +83,11 @@ int kernel_appl_nqueens(int* results, int n, int grain_size, int* dram_buffer) {
     appl::worker_thread_init();
   }
   appl::runtime_end();
+  bsg_cuda_print_stat_kernel_end();
   // --------------------- end of kernel -----------------
 
   bsg_print_int(result);
 
-  barrier.sync();
+  appl::sync();
   return 0;
 }

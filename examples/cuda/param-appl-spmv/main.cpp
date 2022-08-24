@@ -14,6 +14,11 @@
 #include <vector>
 #include <random>
 
+#define MAX_WORKERS 128
+#define HB_L2_CACHE_LINE_WORDS 16
+#define BUF_FACTOR 16385
+#define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
+
 typedef Eigen::VectorXf eigen_vector_t;
 
 hb_mc_device_t dev;
@@ -114,7 +119,7 @@ int SpMVMain(int argc, char *argv[])
     hb_mc_eva_t dram_buffer_dev;
     BSG_CUDA_CALL(hb_mc_device_malloc(
                       &dev
-                      ,128*1024*1024
+                      ,BUF_SIZE * sizeof(uint32_t)
                       ,&dram_buffer_dev
                       ));
 

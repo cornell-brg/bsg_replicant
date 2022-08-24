@@ -41,11 +41,10 @@
 #define ALLOC_NAME "default_allocator"
 #define MAX_WORKERS 128
 #define HB_L2_CACHE_LINE_WORDS 16
-#define BUF_FACTOR 2049
+#define BUF_FACTOR 16385
 #define BUF_SIZE (MAX_WORKERS * HB_L2_CACHE_LINE_WORDS * BUF_FACTOR)
 
 #define N MATRIX_N
-#define GRAIN_SIZE 32
 
 #define REAL float
 
@@ -154,11 +153,6 @@ int kernel_appl_matmul (int argc, char **argv) {
                   return HB_MC_FAIL;
                 }
 
-                if ( GRAIN_SIZE < 4 || !isPowerOfTwo( GRAIN_SIZE ) ) {
-                  printf("Grain size must >= 4 and is power of 2");
-                  return HB_MC_FAIL;
-                }
-
                 eva_t A_device, B_device, C_device;
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &A_device)); /* allocate A[N*N] on the device */
                 BSG_CUDA_CALL(hb_mc_device_malloc(&device, N * N * sizeof(REAL), &B_device)); /* allocate B[N*N] on the device */
@@ -210,7 +204,7 @@ int kernel_appl_matmul (int argc, char **argv) {
                 /*****************************************************************************************************************
                  * Prepare list of input arguments for kernel.
                  ******************************************************************************************************************/
-                int cuda_argv[6] = {A_device, B_device, C_device, N, GRAIN_SIZE, dram_buffer};
+                int cuda_argv[6] = {A_device, B_device, C_device, N, dram_buffer};
 
                 /*****************************************************************************************************************
                  * Enquque grid of tile groups, pass in grid and tile group dimensions, kernel name, number and list of input arguments
