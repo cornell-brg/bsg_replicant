@@ -4,6 +4,10 @@
 
 #define REAL float
 
+REAL* spmA;
+REAL* spmB;
+REAL* spmC;
+
 inline void copy16(float* src, float* dst) {
   register float tmp0 = src[0];
   register float tmp1 = src[1];
@@ -120,9 +124,6 @@ void rec_matmul( REAL* A, REAL* B, REAL* C, int m, int n, int p, int ld,
 {
   int i, j, k;
   /* base case */
-  REAL spmA[m*16];
-  REAL spmB[16*p];
-  REAL spmC[m*p];
   REAL* ptrC = &(spmC[0]);
 
   for ( i = 0; i < m; i++ ) {
@@ -166,9 +167,16 @@ void rec_matmul( REAL* A, REAL* B, REAL* C, int m, int n, int p, int ld,
 
 extern "C" __attribute__ ((noinline))
 int kernel_appl_matmul(REAL* A, REAL* B, REAL* C, int n, int* dram_buffer) {
+  REAL _spmA[16*16];
+  REAL _spmB[16*16];
+  REAL _spmC[16*16];
 
   int num_blk_per_axis = (n + 16 - 1) / 16;
   int num_output_blk = num_blk_per_axis * num_blk_per_axis;
+
+  spmA = &(_spmA[0]);
+  spmB = &(_spmB[0]);
+  spmC = &(_spmC[0]);
 
   // debug print
   if (__bsg_id == 0) {
